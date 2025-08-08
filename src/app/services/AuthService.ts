@@ -1,7 +1,8 @@
-import { IUser } from "../models/interfaces/IUser.interface";
+import { EServiceLoadPriority } from "../models/enums/ServiceLoadPriority.enum";
 
 export class AuthService {
     private static instance: AuthService;
+    public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
 
     private constructor() {
     }
@@ -11,9 +12,5 @@ export class AuthService {
             AuthService.instance = new AuthService();
         }
         return AuthService.instance;
-    }
-
-    public getUser(): IUser {
-        return {name: "Hello World"}; // Get from DB
     }
 }

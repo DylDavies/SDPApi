@@ -1,8 +1,10 @@
 import * as mongodb from "mongodb";
 import { IMongoCollections } from "../models/interfaces/IMongoCollections.interfance";
+import { EServiceLoadPriority } from "../models/enums/ServiceLoadPriority.enum";
 
 export class MongoService {
     private static instance: MongoService;
+    public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.High;
 
     private _collections: IMongoCollections = {};
     private _client: mongodb.MongoClient;
