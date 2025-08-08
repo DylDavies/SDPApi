@@ -1,4 +1,4 @@
-import { EServiceLoadPriority } from "../models/enums/ServiceLoadPriority.enum";
+import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 
 export class AuthService {
     private static instance: AuthService;

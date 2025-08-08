@@ -1,6 +1,7 @@
 import * as mongodb from "mongodb";
 import { IMongoCollections } from "../models/interfaces/IMongoCollections.interfance";
-import { EServiceLoadPriority } from "../models/enums/ServiceLoadPriority.enum";
+import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
+import { LoggingService } from "./LoggingService";
 
 export class MongoService {
     private static instance: MongoService;
@@ -24,7 +25,7 @@ export class MongoService {
 
         this._collections.games = this._db.collection("games");
 
-        console.log(`Successfully connected to database: ${this._db.databaseName}`);
+        LoggingService.getInstance().info(`Successfully connected to database: ${this._db.databaseName}`);
     }
 
     public static getInstance(): MongoService {

@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({quiet: true});
 
 import express from "express";
 import cookieParser from "cookie-parser";
@@ -7,10 +7,12 @@ import cors from "cors";
 import fs from "fs";
 import path from "path";
 
-import AuthRouter from "./routes/auth/router";
+import { LoggingService } from "./services/LoggingService";
 
 const app = express();
 const port = process.env.PORT || 8080;
+
+const logger = LoggingService.getInstance();
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
@@ -18,6 +20,7 @@ app.use(cookieParser());
 app.use(cors({origin: ["*"]}));
 
 async function loadRoutes(cb: () => void) {
+    logger.info("Loading routes...");
     let routes = fs.readdirSync(path.join(__dirname, "routes"));
     let queue = [...routes.map(name => ({name, path: path.join(__dirname, "routes"), route: ""}))];
 
@@ -27,6 +30,7 @@ async function loadRoutes(cb: () => void) {
         if (front?.name == "router.js") {
             let imported = await import(path.join(front.path, front.name));
             app.use(front.route == "" ? "/" : front.route, imported.default);
+            logger.info(`Loaded routes for: ${front.route == "" ? "/" : front.route}`);
         } else {
             let subroutes = fs.readdirSync(path.join(front!.path, front!.name));
             queue = [...queue, ...subroutes.map(name => ({name, path: path.join(front!.path, front!.name), route: front!.route + "/" + front!.name}))]
@@ -37,6 +41,8 @@ async function loadRoutes(cb: () => void) {
 }
 
 async function loadServices(cb: () => void) {
+    logger.info("Loading services...");
+
     let services = fs.readdirSync(path.join(__dirname, "services"));
     let loadedServices = [];
     
@@ -44,11 +50,13 @@ async function loadServices(cb: () => void) {
         loadedServices.push((await import(path.join(__dirname, "services", service))))
     }
 
-    loadedServices.sort((a, b) => a.loadPriority > b.loadPriority ? 1 : -1);
+    loadedServices.sort((a, b) => a.loadPriority > b.loadPriority ? 1 : -1).filter(s => s.loadPriority >= 0);
 
     for (let loadedService of loadedServices) {
         let cls = loadedService[Object.keys(loadedService)[0]];
         cls.getInstance();
+
+        logger.info(`Loaded Service: ${cls.name}`);
     }
 
     cb();
@@ -57,7 +65,7 @@ async function loadServices(cb: () => void) {
 loadServices(() => {
     loadRoutes(() => {
         app.listen(port, () => {
-            console.log(`Listening on port ${port}`);
+            logger.info(`Listening on port ${port}`);
         });
     })
 });

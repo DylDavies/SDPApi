@@ -1,5 +1,5 @@
 import { OAuth2Client } from "google-auth-library";
-import { EServiceLoadPriority } from "../models/enums/ServiceLoadPriority.enum";
+import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 
 export class GoogleService {
     private static instance: GoogleService;

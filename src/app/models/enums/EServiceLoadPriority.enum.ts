@@ -1,5 +1,6 @@
 export enum EServiceLoadPriority {
     Low = 0,
     Medium = 1,
-    High = 2
+    High = 2,
+    None = -1
 }
