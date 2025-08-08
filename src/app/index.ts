@@ -17,12 +17,24 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(cors({origin: ["*"]}));
 
-// TODO: refactor routes to follow below structure
-app.use("/auth", AuthRouter);
+async function loadRoutes(cb: () => void) {
+    let routes = fs.readdirSync(path.join(__dirname, "routes"));
+    let queue = [...routes.map(name => ({name, path: path.join(__dirname, "routes"), route: ""}))];
 
-app.get("/", (req, res) => {
-    res.send("Hello no");
-});
+    while (queue.length > 0) {
+        let front = queue.shift();
+        
+        if (front?.name == "router.js") {
+            let imported = await import(path.join(front.path, front.name));
+            app.use(front.route == "" ? "/" : front.route, imported.default);
+        } else {
+            let subroutes = fs.readdirSync(path.join(front!.path, front!.name));
+            queue = [...queue, ...subroutes.map(name => ({name, path: path.join(front!.path, front!.name), route: front!.route + "/" + front!.name}))]
+        }
+    }
+
+    cb();
+}
 
 async function loadServices(cb: () => void) {
     let services = fs.readdirSync(path.join(__dirname, "services"));
@@ -43,7 +55,9 @@ async function loadServices(cb: () => void) {
 }
 
 loadServices(() => {
-    app.listen(port, () => {
-        console.log(`Listening on port ${port}`);
-    });
+    loadRoutes(() => {
+        app.listen(port, () => {
+            console.log(`Listening on port ${port}`);
+        });
+    })
 });
