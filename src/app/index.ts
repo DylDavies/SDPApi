@@ -17,11 +17,11 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(cors({origin: ["*"]}));
 
+// TODO: refactor routes to follow below structure
 app.use("/auth", AuthRouter);
 
 app.get("/", (req, res) => {
     res.send("Hello no");
-    console.log(req.cookies);
 });
 
 async function loadServices(cb: () => void) {

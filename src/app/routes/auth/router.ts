@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { GoogleService } from "../../services/GoogleService";
 import jwt from "jsonwebtoken";
+import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.get("/callback", async (req, res) => {
             role: "user"
         }
 
-        const jwtPayload = mockUser; // + any other info
+        const jwtPayload: IPayloadUser = mockUser; // + any other info
 
         const token = jwt.sign(jwtPayload, process.env.JWT_SECRET as string, {
             expiresIn: "14d"
@@ -67,7 +68,7 @@ router.get("/callback", async (req, res) => {
     };
 })
 
-router.post("/logout", (req, res) => {
+router.get("/logout", (req, res) => {
     res.clearCookie("session");
     res.status(200).send({ status: "success" });
 });
