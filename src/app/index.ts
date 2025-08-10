@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 
 import { LoggingService } from "./services/LoggingService";
+import { loggerMiddleware } from "./middleware/logger";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -18,6 +19,8 @@ app.use(express.json());
 app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(cors({origin: ["*"]}));
+
+app.use(loggerMiddleware);
 
 async function loadRoutes(cb: () => void) {
     logger.info("Loading routes...");

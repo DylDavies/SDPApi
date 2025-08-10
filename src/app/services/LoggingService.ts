@@ -84,9 +84,7 @@ export class LoggingService {
         // 4: at <the actual caller> ...  <-- This is the line we want.
         if (stack && stack.length > 4) {
             const callerLine = stack[4].trim();
-            
-            // This regex is designed to find the absolute path in a stack line.
-            // It looks for either a Windows-style drive letter (C:\) or a Unix-style root slash (/).
+
             const match = callerLine.match(/((?:[A-Z]:\\|\/)[^:]+):\d+:\d+/);
             
             if (match && match[1]) {
@@ -113,17 +111,15 @@ export class LoggingService {
     private log(message: string, level: ELogLevel, context?: any): void {
         const timestamp = new Date().toISOString();
         const color = this.getColorForLevel(level);
-        const callerFile = this.getCallerFile();
+        //const callerFile = this.getCallerFile();
 
-        // Format the main log line, now including the file path
-        const logLine = `${color}[${level}] - ${timestamp} - [${callerFile}] - ${message}${this.colors.reset}`;
+        // const logLine = `${color}[${level}] - ${timestamp} - [${callerFile}] - ${message}${this.colors.reset}`;
+        const logLine = `${color}[${level}] - ${timestamp} - ${message}${this.colors.reset}`;
         
         console.log(logLine);
 
-        // If context is provided, log it on a new line for clarity.
         if (context) {
             if (context instanceof Error) {
-                // For errors, log the stack trace for better debugging
                 console.error(context);
             } else {
                 console.log(context);
