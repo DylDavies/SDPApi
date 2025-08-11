@@ -9,6 +9,7 @@ import path from "path";
 
 import { LoggingService } from "./services/LoggingService";
 import { loggerMiddleware } from "./middleware/logger.middleware";
+import { attachUserMiddleware } from "./middleware/auth.middleware";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -23,6 +24,7 @@ app.use(cors({origin: ["*"]}));
 app.set('trust proxy', 1); 
 
 app.use(loggerMiddleware);
+app.use(attachUserMiddleware);
 
 async function loadRoutes(cb: () => void) {
     logger.info("Loading routes...");
@@ -55,7 +57,7 @@ async function loadServices(cb: () => void) {
         loadedServices.push((await import(path.join(__dirname, "services", service))))
     }
 
-    loadedServices.sort((a, b) => a.loadPriority > b.loadPriority ? 1 : -1).filter(s => s.loadPriority >= 0);
+    loadedServices = loadedServices.sort((a, b) => a[Object.keys(a)[0]].loadPriority < b[Object.keys(b)[0]].loadPriority ? 1 : -1).filter(s => s[Object.keys(s)[0]].loadPriority >= 0);
 
     for (let loadedService of loadedServices) {
         let cls = loadedService[Object.keys(loadedService)[0]];

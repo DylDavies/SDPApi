@@ -1,3 +1,5 @@
+import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
+
 enum ELogLevel {
     DEBUG = 'DEBUG',
     INFO = 'INFO',
@@ -7,6 +9,7 @@ enum ELogLevel {
 
 export class LoggingService {
     private static instance: LoggingService;
+    public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.None;
 
     // ANSI escape codes for colors
     private readonly colors = {

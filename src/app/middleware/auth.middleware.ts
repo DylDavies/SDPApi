@@ -10,6 +10,24 @@ declare global {
     }
 }
 
+export function attachUserMiddleware(req: Request, _: Response, next: NextFunction) {
+    const token = req.cookies.session;
+
+    if (!token) {
+        return next();
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+
+        req.user = decoded as IPayloadUser;
+
+        next();
+    } catch (error) {
+        return next();
+    }
+}
+
 export function authenticationMiddleware(req: Request, res: Response, next: NextFunction) {
     const token = req.cookies.session;
 
@@ -18,9 +36,7 @@ export function authenticationMiddleware(req: Request, res: Response, next: Next
     }
 
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
-
-        req.user = decoded as IPayloadUser;
+        jwt.verify(token, process.env.JWT_SECRET as string);
 
         next();
     } catch (error) {
