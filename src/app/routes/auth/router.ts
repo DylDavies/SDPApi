@@ -4,9 +4,7 @@ import jwt from "jsonwebtoken";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { LoggingService } from "../../services/LoggingService";
 import { MongoService } from "../../services/MongoService";
-import { EUserRole } from "../../models/enums/EUserRole.enum";
 import MUser from "../../db/models/MUser.model";
-import { WithId } from "mongodb";
 import { UserService } from "../../services/UserService";
 
 const router = Router();

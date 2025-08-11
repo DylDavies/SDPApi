@@ -8,7 +8,7 @@ import fs from "fs";
 import path from "path";
 
 import { LoggingService } from "./services/LoggingService";
-import { loggerMiddleware } from "./middleware/logger";
+import { loggerMiddleware } from "./middleware/logger.middleware";
 
 const app = express();
 const port = process.env.PORT || 8080;

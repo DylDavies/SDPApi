@@ -68,41 +68,6 @@ export class LoggingService {
     }
 
     /**
-     * Gets the file path of the code that called the logger.
-     * This is done by parsing the V8 stack trace.
-     * @returns A string representing the relative file path, or 'unknown file'.
-     */
-    private getCallerFile(): string {
-        const err = new Error();
-        const stack = err.stack?.split('\n');
-
-        // The stack trace structure is:
-        // 0: Error
-        // 1: at LoggingService.getCallerFile ...
-        // 2: at LoggingService.log ...
-        // 3: at LoggingService.info / .debug etc. ...
-        // 4: at <the actual caller> ...  <-- This is the line we want.
-        if (stack && stack.length > 4) {
-            const callerLine = stack[4].trim();
-
-            const match = callerLine.match(/((?:[A-Z]:\\|\/)[^:]+):\d+:\d+/);
-            
-            if (match && match[1]) {
-                let filePath = match[1];
-                
-                // Make path relative to the project root
-                let relativePath = filePath.replace(process.cwd(), '');
-                
-                // Remove the build directory (e.g., /dist or \dist) from the start of the path
-                relativePath = relativePath.replace(/^[\/\\]dist/, '');
-                
-                return relativePath;
-            }
-        }
-        return 'unknown file';
-    }
-
-    /**
      * The core logging method that formats and outputs the message.
      * @param message The message string.
      * @param level The log level (DEBUG, INFO, WARN, ERROR).
@@ -111,9 +76,7 @@ export class LoggingService {
     private log(message: string, level: ELogLevel, context?: any): void {
         const timestamp = new Date().toISOString();
         const color = this.getColorForLevel(level);
-        //const callerFile = this.getCallerFile();
 
-        // const logLine = `${color}[${level}] - ${timestamp} - [${callerFile}] - ${message}${this.colors.reset}`;
         const logLine = `${color}[${level}] - ${timestamp} - ${message}${this.colors.reset}`;
         
         console.log(logLine);
