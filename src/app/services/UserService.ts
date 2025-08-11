@@ -1,8 +1,7 @@
-import { MongoGCPError, WithId } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import MUser from "../db/models/MUser.model";
 import { MongoService } from "./MongoService";
-import { EUserRole } from "../models/enums/EUserRole.enum";
 
 export class UserService {
     private static instance: UserService;

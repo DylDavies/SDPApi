@@ -33,8 +33,6 @@ export class MongoService {
             this._collections[config.collectionName] = this._db.collection(config.collectionName);
         }
 
-        this._collections.games = this._db.collection("games");
-
         LoggingService.getInstance().info(`Successfully connected to database: ${this._db.databaseName}`);
     }
 

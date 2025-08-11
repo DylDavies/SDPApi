@@ -3,13 +3,11 @@ import { GoogleService } from "../../services/GoogleService";
 import jwt from "jsonwebtoken";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { LoggingService } from "../../services/LoggingService";
-import { MongoService } from "../../services/MongoService";
 import MUser from "../../db/models/MUser.model";
 import { UserService } from "../../services/UserService";
 
 const router = Router();
 const logger = LoggingService.getInstance();
-const mongo = MongoService.getInstance();
 
 router.get("/", (req, res) => {
     res.redirect("/auth/login");
@@ -45,12 +43,6 @@ router.get("/callback", async (req, res) => {
         if (!payload || !payload.sub || !payload.email) {
             logger.error("Invalid Google ID token payload.", payload);
             return res.status(400).send('Invalid Google ID token.');
-        }
-
-        const usersCollection = mongo.getCollections().users;
-        if (!usersCollection) {
-            logger.error("Users collection not found in MongoService.");
-            return res.status(500).send("Internal server error: User service not available.");
         }
 
         const userFromDb = await UserService.getInstance()
