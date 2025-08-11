@@ -20,6 +20,8 @@ app.use(express.urlencoded({extended: true}));
 app.use(cookieParser());
 app.use(cors({origin: ["*"]}));
 
+app.set('trust proxy', 1); 
+
 app.use(loggerMiddleware);
 
 async function loadRoutes(cb: () => void) {

@@ -93,7 +93,7 @@ router.get("/callback", async (req, res) => {
     };
 })
 
-router.get("/logout", (req, res) => {
+router.post("/logout", (req, res) => {
     res.clearCookie("session");
     res.status(200).send({ status: "success" });
 });
