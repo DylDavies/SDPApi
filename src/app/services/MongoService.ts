@@ -1,13 +1,15 @@
 import * as mongodb from "mongodb";
-import { IMongoCollections } from "../models/interfaces/IMongoCollections.interfance";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { LoggingService } from "./LoggingService";
+import { readdirSync } from "fs";
+import path from "path";
+import { IModelConfig } from "../models/interfaces/IModelConfig.interface";
 
 export class MongoService {
     private static instance: MongoService;
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.High;
 
-    private _collections: IMongoCollections = {};
+    private _collections: { [key: string]: mongodb.Collection } = {};
     private _client: mongodb.MongoClient;
     private _db: mongodb.Db | null;
 
@@ -23,6 +25,14 @@ export class MongoService {
 
         this._db = this._client.db(process.env.DB_NAME);
 
+        const models = readdirSync(path.join(__dirname, "../db/models"));
+
+        for await (let model of models) {
+            const { config }: { config: IModelConfig } = await import(path.join(__dirname, "../db/models", model));
+
+            this._collections[config.collectionName] = this._db.collection(config.collectionName);
+        }
+
         this._collections.games = this._db.collection("games");
 
         LoggingService.getInstance().info(`Successfully connected to database: ${this._db.databaseName}`);
@@ -35,7 +45,7 @@ export class MongoService {
         return MongoService.instance;
     }
 
-    public getCollections(): IMongoCollections {
+    public getCollections(): { [key: string]: mongodb.Collection } {
         return this._collections;
     }
 }

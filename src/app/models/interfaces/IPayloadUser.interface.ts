@@ -1,6 +1,6 @@
 export default interface IPayloadUser {
     id: string,
-    email?: string,
-    name?: string,
+    email: string,
+    displayName: string,
     role: string
 }

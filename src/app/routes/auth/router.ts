@@ -2,8 +2,16 @@ import { Router } from "express";
 import { GoogleService } from "../../services/GoogleService";
 import jwt from "jsonwebtoken";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
+import { LoggingService } from "../../services/LoggingService";
+import { MongoService } from "../../services/MongoService";
+import { EUserRole } from "../../models/enums/EUserRole.enum";
+import MUser from "../../db/models/MUser.model";
+import { WithId } from "mongodb";
+import { UserService } from "../../services/UserService";
 
 const router = Router();
+const logger = LoggingService.getInstance();
+const mongo = MongoService.getInstance();
 
 router.get("/", (req, res) => {
     res.redirect("/auth/login");
@@ -20,6 +28,7 @@ router.get("/callback", async (req, res) => {
         const { code } = req.query;
 
         if (!code || typeof code != "string") {
+            logger.warn("Authorization code missing from callback.");
             return res.status(400).send("Authorization code missing or malformed.");
         }
 
@@ -27,6 +36,7 @@ router.get("/callback", async (req, res) => {
         const googleIdToken = tokens.id_token;
 
         if (!googleIdToken) {
+            logger.error("Google ID Token not found in token response.");
             return res.status(400).send("Google ID Token not found.");
         }
 
@@ -34,20 +44,35 @@ router.get("/callback", async (req, res) => {
 
         const payload = ticket.getPayload();
         
-        if (!payload) {
+        if (!payload || !payload.sub || !payload.email) {
+            logger.error("Invalid Google ID token payload.", payload);
             return res.status(400).send('Invalid Google ID token.');
         }
 
-        // TODO: Add to database
-
-        const mockUser = {
-            id: "internal-db-id",
-            email: payload.email,
-            name: payload.name,
-            role: "user"
+        const usersCollection = mongo.getCollections().users;
+        if (!usersCollection) {
+            logger.error("Users collection not found in MongoService.");
+            return res.status(500).send("Internal server error: User service not available.");
         }
 
-        const jwtPayload: IPayloadUser = mockUser; // + any other info
+        const userFromDb = await UserService.getInstance()
+            .addOrUpdateUser(new MUser(
+                payload.sub,
+                payload.email,
+                payload.picture
+            ));
+
+        if (!userFromDb) {
+            logger.error("Failed to find or create user in the database.", { sub: payload.sub });
+            return res.status(500).send("Could not process user login.");
+        }
+
+        const jwtPayload: IPayloadUser = {
+            id: userFromDb._id.toHexString(),
+            email: userFromDb.email,
+            displayName: userFromDb.displayName,
+            role: userFromDb.role
+        };
 
         const token = jwt.sign(jwtPayload, process.env.JWT_SECRET as string, {
             expiresIn: "14d"
@@ -63,8 +88,8 @@ router.get("/callback", async (req, res) => {
 
         res.redirect("/");
     } catch (error) {
-        // TODO: add logging service logic here
-        console.error(error);
+        logger.error("An error occurred during the auth callback process.", error);
+        res.status(500).send("An internal error occurred.");
     };
 })
 
