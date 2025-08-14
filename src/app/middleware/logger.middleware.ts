@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { LoggingService } from "../services/LoggingService";
+import { Singleton } from "../models/classes/Singleton";
 
-const logger = LoggingService.getInstance();
+const logger = Singleton.getInstance(LoggingService);
 
 export function loggerMiddleware(req: Request, res: Response, next: NextFunction) {
     const start = process.hrtime();

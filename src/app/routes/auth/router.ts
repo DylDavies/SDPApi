@@ -5,20 +5,21 @@ import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { LoggingService } from "../../services/LoggingService";
 import MUser from "../../db/models/MUser.model";
 import { UserService } from "../../services/UserService";
+import { Singleton } from "../../models/classes/Singleton";
 
 const router = Router();
-const logger = LoggingService.getInstance();
+const logger = Singleton.getInstance(LoggingService);
 
 router.get("/", (req, res) => {
     res.redirect("/auth/login");
 })
 
 router.get("/login", (req, res) => {
-    res.redirect(GoogleService.getInstance().generateAuthUrl());
+    res.redirect(Singleton.getInstance(GoogleService).generateAuthUrl());
 });
 
 router.get("/callback", async (req, res) => {
-    const googleService = GoogleService.getInstance();
+    const googleService = Singleton.getInstance(GoogleService);
 
     try {
         const { code } = req.query;
@@ -45,7 +46,7 @@ router.get("/callback", async (req, res) => {
             return res.status(400).send('Invalid Google ID token.');
         }
 
-        const userFromDb = await UserService.getInstance()
+        const userFromDb = await Singleton.getInstance(UserService)
             .addOrUpdateUser(new MUser(
                 payload.sub,
                 payload.email,

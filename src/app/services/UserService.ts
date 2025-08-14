@@ -1,23 +1,21 @@
-import { ObjectId, WithId } from "mongodb";
+import { WithId } from "mongodb";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import MUser from "../db/models/MUser.model";
 import { MongoService } from "./MongoService";
+import { IService } from "../models/interfaces/IService.interface";
+import { Singleton } from "../models/classes/Singleton";
+import MongoServiceInstance, { MongoService as MongoServiceClass } from "./MongoService";
 
-export class UserService {
-    private static instance: UserService;
+export class UserService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
 
-    private _mongoService: MongoService;
+    private _mongoService!: MongoServiceClass;
 
-    private constructor() {
-        this._mongoService = MongoService.getInstance();
-    }
+    constructor() {}
 
-    public static getInstance(): UserService {
-        if (!UserService.instance) {
-            UserService.instance = new UserService();
-        }
-        return UserService.instance;
+    public async init(): Promise<void> {
+        this._mongoService = MongoServiceInstance;
+        return Promise.resolve();
     }
 
     public async addOrUpdateUser(user: MUser): Promise<WithId<MUser> | null> {
@@ -44,3 +42,5 @@ export class UserService {
         return result as WithId<MUser> | null;
     }
 }
+
+export default Singleton.getInstance(UserService);

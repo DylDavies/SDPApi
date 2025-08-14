@@ -1,4 +1,5 @@
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
+import { IService } from "../models/interfaces/IService.interface";
 
 enum ELogLevel {
     DEBUG = 'DEBUG',
@@ -7,8 +8,7 @@ enum ELogLevel {
     ERROR = 'ERROR',
 }
 
-export class LoggingService {
-    private static instance: LoggingService;
+export class LoggingService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.None;
 
     // ANSI escape codes for colors
@@ -21,17 +21,10 @@ export class LoggingService {
         gray: "\x1b[90m", // Added gray color
     };
 
-    private constructor() {}
+    constructor() {}
 
-    /**
-     * Gets the single instance of the LoggingService.
-     * @returns The singleton instance of LoggingService.
-     */
-    public static getInstance(): LoggingService {
-        if (!LoggingService.instance) {
-            LoggingService.instance = new LoggingService();
-        }
-        return LoggingService.instance;
+    public async init(): Promise<void> {
+        return Promise.resolve();
     }
 
     /**

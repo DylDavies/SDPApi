@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-dotenv.config({quiet: true});
+dotenv.config({ quiet: true });
 
 import express from "express";
 import cookieParser from "cookie-parser";
@@ -10,69 +10,51 @@ import path from "path";
 import { LoggingService } from "./services/LoggingService";
 import { loggerMiddleware } from "./middleware/logger.middleware";
 import { attachUserMiddleware } from "./middleware/auth.middleware";
+import { ServiceManager } from "./services/ServiceManager";
+import { Singleton } from "./models/classes/Singleton";
 
 const app = express();
 const port = process.env.PORT || 8080;
+const logger = Singleton.getInstance(LoggingService);
 
-const logger = LoggingService.getInstance();
+async function main() {
+    // --- Centralized Service Loading ---
+    await ServiceManager.loadServices();
 
-app.use(express.json());
-app.use(express.urlencoded({extended: true}));
-app.use(cookieParser());
-app.use(cors({origin: ["*"]}));
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(cookieParser());
+    app.use(cors({ origin: ["*"] }));
+    app.set('trust proxy', 1);
+    app.use(loggerMiddleware);
+    app.use(attachUserMiddleware);
 
-app.set('trust proxy', 1); 
-
-app.use(loggerMiddleware);
-app.use(attachUserMiddleware);
-
-async function loadRoutes(cb: () => void) {
+    // --- Route Loading (can remain the same) ---
     logger.info("Loading routes...");
     let routes = fs.readdirSync(path.join(__dirname, "routes"));
-    let queue = [...routes.map(name => ({name, path: path.join(__dirname, "routes"), route: ""}))];
+    let queue = [...routes.map(name => ({ name, path: path.join(__dirname, "routes"), route: "" }))];
 
     while (queue.length > 0) {
         let front = queue.shift();
-        
-        if (front?.name == "router.js") {
+        if (!front) continue;
+
+        if (fs.statSync(path.join(front.path, front.name)).isFile()) {
             let imported = await import(path.join(front.path, front.name));
-            app.use(front.route == "" ? "/" : front.route, imported.default);
-            logger.info(`Loaded routes for: ${front.route == "" ? "/" : front.route}`);
+            app.use(front.route === "" ? "/" : front.route, imported.default);
+            logger.info(`Loaded routes for: ${front.route === "" ? "/" : front.route}`);
         } else {
-            let subroutes = fs.readdirSync(path.join(front!.path, front!.name));
-            queue = [...queue, ...subroutes.map(name => ({name, path: path.join(front!.path, front!.name), route: front!.route + "/" + front!.name}))]
+            let subroutes = fs.readdirSync(path.join(front.path, front.name));
+            queue.push(...subroutes.map(name => ({ name, path: path.join(front.path, front.name), route: `${front.route}/${front.name}` })));
         }
     }
 
-    cb();
+    // --- Start Server ---
+    app.listen(port, () => {
+        logger.info(`Listening on port ${port}`);
+    });
 }
 
-async function loadServices(cb: () => void) {
-    logger.info("Loading services...");
-
-    let services = fs.readdirSync(path.join(__dirname, "services"));
-    let loadedServices = [];
-    
-    for await (let service of services) {
-        loadedServices.push((await import(path.join(__dirname, "services", service))))
-    }
-
-    loadedServices = loadedServices.sort((a, b) => a[Object.keys(a)[0]].loadPriority < b[Object.keys(b)[0]].loadPriority ? 1 : -1).filter(s => s[Object.keys(s)[0]].loadPriority >= 0);
-
-    for (let loadedService of loadedServices) {
-        let cls = loadedService[Object.keys(loadedService)[0]];
-        cls.getInstance();
-
-        logger.info(`Loaded Service: ${cls.name}`);
-    }
-
-    cb();
-}
-
-loadServices(() => {
-    loadRoutes(() => {
-        app.listen(port, () => {
-            logger.info(`Listening on port ${port}`);
-        });
-    })
+main().catch(error => {
+    logger.error("Failed to start the application.", error);
+    process.exit(1);
 });
