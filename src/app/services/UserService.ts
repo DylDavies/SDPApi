@@ -41,6 +41,37 @@ export class UserService implements IService {
 
         return result as WithId<MUser> | null;
     }
+
+    public async getUser(sub: string): Promise<WithId<MUser> | null> {
+        const user = await this._mongoService.getCollections().users.findOne({ sub });
+        return user as WithId<MUser>;
+    }
+
+    
+    public async editUser(sub: string, updateData: Partial<MUser>): Promise<WithId<MUser> | null> {
+        
+        //Ensures only safe fields can be changed
+        const safeFields: (keyof MUser)[] = ['role', 'email', 'displayName', 'picture'];
+        const updatePayload: { [key: string]: any } = {}
+        for (const key in updateData) {
+        if(safeFields.includes(key as keyof MUser)){
+            if (updateData[key as keyof MUser] !== undefined) {
+            updatePayload[key] = updateData[key as keyof MUser];
+        }
+        }
+    }
+
+        const result = await this._mongoService.getCollections().users.findOneAndUpdate(
+            { sub }, 
+            { $set: updatePayload}, 
+            { 
+                returnDocument: 'after' 
+            }
+        );
+
+        return result as WithId<MUser> | null;
+    }
+
 }
 
 export default Singleton.getInstance(UserService);
