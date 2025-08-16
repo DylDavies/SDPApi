@@ -1,4 +1,4 @@
-import { WithId } from "mongodb";
+import { ObjectId, WithId } from "mongodb";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import MUser from "../db/models/MUser.model";
 import { MongoService } from "./MongoService";
@@ -42,13 +42,13 @@ export class UserService implements IService {
         return result as WithId<MUser> | null;
     }
 
-    public async getUser(sub: string): Promise<WithId<MUser> | null> {
-        const user = await this._mongoService.getCollections().users.findOne({ sub });
+    public async getUser(id: ObjectId): Promise<WithId<MUser> | null> {
+        const user = await this._mongoService.getCollections().users.findOne({ _id: id  });
         return user as WithId<MUser>;
     }
 
     
-    public async editUser(sub: string, updateData: Partial<MUser>): Promise<WithId<MUser> | null> {
+    public async editUser(id: ObjectId, updateData: Partial<MUser>): Promise<WithId<MUser> | null> {
         
         //Ensures only safe fields can be changed
         const safeFields: (keyof MUser)[] = ['role', 'email', 'displayName', 'picture'];
@@ -62,7 +62,7 @@ export class UserService implements IService {
     }
 
         const result = await this._mongoService.getCollections().users.findOneAndUpdate(
-            { sub }, 
+            {_id: id }, 
             { $set: updatePayload}, 
             { 
                 returnDocument: 'after' 

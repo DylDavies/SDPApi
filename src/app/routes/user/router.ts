@@ -7,11 +7,11 @@ import MUser from '../../db/models/MUser.model';
 const router = Router();
 const userService = Singleton.getInstance(UserService);
 const logger = Singleton.getInstance(LoggingService);
-
+router.use()
 router.get('/:sub', async(req, res) => {
     try{
-        const { sub } =  req.params;
-        const user = await userService.getUser(sub);
+        const { id } =  req.user?.id;
+        const user = await userService.getUser(id);
 
         if(!user){
             logger.error("User was not returned");
@@ -27,7 +27,7 @@ router.get('/:sub', async(req, res) => {
 
 router.patch('/:sub', async (req,res) => {
     try{
-        const {sub} = req.params;
+        const {id} = req.user?.id;
         const updateData: Partial<MUser> = req.body;
 
         //data cleaning 
@@ -39,7 +39,7 @@ router.patch('/:sub', async (req,res) => {
             return res.status(400).send("No valid fields provided");
         }
 
-        const updatedUser = await userService.editUser(sub, updateData);
+        const updatedUser = await userService.editUser(id, updateData);
 
         if(!updatedUser){
             return res.status(404).send("Updated user not found")
