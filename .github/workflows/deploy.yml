@@ -19,6 +19,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.18.0'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
@@ -33,30 +34,38 @@ jobs:
           echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
 
-      - name: Deploy to Server via SSH
+      - name: Deploy application files via rsync
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script_stop: true
+          script: |
+            # Create the directory if it doesn't exist
+            mkdir -p /var/www/api
+          
+      - name: Sync files to server
+        run: |
+          rsync -avzr --delete \
+            -e "ssh -o StrictHostKeyChecking=no -i $SSH_PRIVATE_KEY_FILE" \
+            . ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/api/
+        env:
+          SSH_PRIVATE_KEY_FILE: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Restart application on server
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            # FIX for "command not found": Source nvm script to load node, npm, pm2
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
             # Navigate to the app directory
             cd /var/www/api
-
-            # Stop the current process to avoid conflicts
-            pm2 stop api || true
-
-            # Pull the latest code from the release tag
-            git checkout main
-            git pull origin main
-            git fetch --tags
-            latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
-            git checkout $latest_tag
-
-            # Install production dependencies
-            npm install --omit=dev
-
-            npm run build
-
+            
             # Start or restart the application with PM2
             pm2 startOrRestart ecosystem.config.js --env production
