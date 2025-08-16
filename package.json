@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "rm -rf ./dist && npm run build && npm run serve",
     "start": "tsc && npm run serve",
-    "build": "tsc",
+    "build": "rm -rf ./dist && tsc",
     "serve": "node dist/index.js",
     "test": "jest",
     "test:watch": "jest --watch"
