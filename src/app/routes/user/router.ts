@@ -1,14 +1,17 @@
-import { Router, Request, Response } from 'express';
+import { Router } from 'express';
 import { Singleton } from '../../models/classes/Singleton';
 import { LoggingService } from '../../services/LoggingService';
 import { UserService } from '../../services/UserService';
 import MUser from '../../db/models/MUser.model';
+import { authenticationMiddleware } from '../../middleware/auth.middleware';
 
 const router = Router();
 const userService = Singleton.getInstance(UserService);
 const logger = Singleton.getInstance(LoggingService);
-router.use()
-router.get('/:sub', async(req, res) => {
+
+router.use(authenticationMiddleware);
+
+router.get('/', async (req, res) => {
     try{
         const { id } =  req.user?.id;
         const user = await userService.getUser(id);
@@ -20,14 +23,14 @@ router.get('/:sub', async(req, res) => {
 
         return res.status(200).json(user);
     } catch (error){
-        logger.error(`Error fetching user with sub: ${req.params.sub}`, error);
+        logger.error(`Error fetching user.`, error);
         return res.status(500).send('Internal Server Error');
     }
 })
 
-router.patch('/:sub', async (req,res) => {
+router.patch('/', async (req,res) => {
     try{
-        const {id} = req.user?.id;
+        const { id } = req.user?.id;
         const updateData: Partial<MUser> = req.body;
 
         //data cleaning 
@@ -48,7 +51,7 @@ router.patch('/:sub', async (req,res) => {
         return res.status(200).json(updatedUser);
         
     } catch(error){
-        logger.error(`Error updating user with sub: ${req.params.sub}`, error);
+        logger.error(`Error updating user.`, error);
         return res.status(500).send('Internal Server Error' );
     }
 })
