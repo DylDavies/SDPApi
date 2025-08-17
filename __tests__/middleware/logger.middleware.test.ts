@@ -6,10 +6,10 @@ const mockLogger = {
     error: jest.fn(),
 };
 
-jest.mock('../../src/app/services/LoggingService', () => ({
-    LoggingService: {
-        getInstance: () => mockLogger,
-    },
+jest.mock("../../src/app/models/classes/Singleton.ts", () => ({
+    Singleton: {
+        getInstance: jest.fn().mockReturnValue(mockLogger)
+    }
 }));
 
 import { loggerMiddleware } from '../../src/app/middleware/logger.middleware';

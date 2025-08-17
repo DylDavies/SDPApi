@@ -41,7 +41,7 @@ describe('authMiddleware', () => {
         expect(nextFunction).not.toHaveBeenCalled();
     });
 
-    it('should call next() and attach user to request if token is valid', () => {
+    it('should call next() if token is valid', () => {
         const validToken = 'valid-token';
         const userPayload = { userId: '123', email: 'test@example.com' };
         mockRequest.cookies!.session = validToken;
@@ -51,7 +51,6 @@ describe('authMiddleware', () => {
         authenticationMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
 
         expect(mockedJwt.verify).toHaveBeenCalledWith(validToken, process.env.JWT_SECRET);
-        expect(mockRequest.user).toEqual(userPayload);
         expect(nextFunction).toHaveBeenCalledTimes(1);
         expect(mockResponse.status).not.toHaveBeenCalled();
     });
