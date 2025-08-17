@@ -6,53 +6,87 @@ const mockGoogleInstance = {
     verifyIdToken: jest.fn(),
     generateAuthUrl: jest.fn()
 };
+
 const mockMongoInstance = {
     getCollections: jest.fn(),
 };
+
 const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 
-jest.mock('../../src/app/services/GoogleService', () => ({
-    GoogleService: {
-        getInstance: () => mockGoogleInstance,
-    },
+const mockUserService = {
+    addOrUpdateUser: jest.fn()
+}
+
+jest.mock('../../src/app/models/classes/Singleton', () => ({
+    Singleton: {
+        getInstance: jest.fn().mockImplementation((serviceClass: any) => {
+            switch (serviceClass.name) {
+                case 'GoogleService':
+                    return mockGoogleInstance;
+                case 'MongoService':
+                    return mockMongoInstance;
+                case 'UserService':
+                    return mockUserService;
+                case 'LoggingService':
+                    return mockLogger;
+                default:
+                    console.error(`Singleton mock was called with an unhandled class: ${serviceClass.name}`);
+                    return undefined;
+            }
+        })
+    }
 }));
-jest.mock('../../src/app/services/MongoService', () => ({
-    MongoService: {
-        getInstance: () => mockMongoInstance,
-    },
-}));
-jest.mock('../../src/app/services/LoggingService', () => ({
-    LoggingService: { getInstance: () => mockLogger },
-}));
+
 jest.mock('jsonwebtoken');
 
-import authRouter from '../../src/app/routes/auth/router';
-
-const mockedJwt = jwt as jest.Mocked<typeof jwt>;
-
 describe('Auth Routes - /callback', () => {
+    let authRouter: any;
+    let callbackHandler: any;
     let mockRequest: Partial<Request>;
     let mockResponse: Partial<Response>;
-    let nextFunction: NextFunction = jest.fn();
+    let nextFunction: NextFunction;
 
-    const callbackLayer = authRouter.stack.find(layer => layer.route && layer.route.path === '/callback');
-    if (!callbackLayer || !callbackLayer.route) {
-        throw new Error('Callback route not found on authRouter. Cannot run tests.');
-    }
-    const callbackHandler = callbackLayer.route.stack[0].handle;
+    let mockGoogleInstance: any;
+    let mockMongoInstance: any;
+    let mockUserService: any;
+    let mockLogger: any;
+    let mockedJwt: jest.Mocked<typeof jwt>;
 
     beforeEach(() => {
-        jest.resetAllMocks();
-        
-        mockRequest = {
-            query: { code: 'valid-code' },
-        };
-        mockResponse = {
-            status: jest.fn().mockReturnThis(),
-            send: jest.fn(),
-            redirect: jest.fn(),
-            cookie: jest.fn(),
-        };
+        jest.resetModules();
+
+        mockGoogleInstance = { getTokens: jest.fn(), verifyIdToken: jest.fn(), generateAuthUrl: jest.fn() };
+        mockMongoInstance = { getCollections: jest.fn() };
+        mockUserService = { addOrUpdateUser: jest.fn() };
+        mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
+
+        jest.mock('../../src/app/models/classes/Singleton', () => ({
+            Singleton: {
+                getInstance: jest.fn().mockImplementation((serviceClass: any) => {
+                    switch (serviceClass.name) {
+                        case 'GoogleService': return mockGoogleInstance;
+                        case 'MongoService': return mockMongoInstance;
+                        case 'UserService': return mockUserService;
+                        case 'LoggingService': return mockLogger;
+                    }
+                })
+            }
+        }));
+
+        jest.mock('jsonwebtoken');
+
+        authRouter = require('../../src/app/routes/auth/router').default;
+        mockedJwt = require('jsonwebtoken');
+
+        const callbackLayer = authRouter.stack.find((layer: any) => layer.route && layer.route.path === '/callback');
+        if (!callbackLayer || !callbackLayer.route) {
+            throw new Error('Callback route not found on authRouter. Cannot run tests.');
+        }
+        callbackHandler = callbackLayer.route.stack[0].handle;
+
+        mockRequest = { query: { code: 'valid-code' } };
+        mockResponse = { status: jest.fn().mockReturnThis(), send: jest.fn(), redirect: jest.fn(), cookie: jest.fn() };
+        nextFunction = jest.fn();
     });
 
     it('should redirect to / on successful authentication and user creation', async () => {
@@ -62,14 +96,10 @@ describe('Auth Routes - /callback', () => {
                 sub: 'google-user-123', email: 'test@example.com', name: 'Test User', picture: 'http://example.com/pic.jpg',
             }),
         } as any);
-        mockMongoInstance.getCollections.mockReturnValue({
-            users: {
-                findOneAndUpdate: jest.fn().mockResolvedValue({
-                    _id: { toHexString: () => 'mongo-id-123' }, 
-                    email: 'test@example.com', name: 'Test User', role: 'user' 
-                })
-            }
-        } as any);
+        mockUserService.addOrUpdateUser.mockResolvedValue({
+            _id: { toHexString: () => 'mongo-id-123' }, 
+            email: 'test@example.com', name: 'Test User', role: 'user' 
+        })
         mockedJwt.sign.mockImplementation(() => 'fake-jwt-token');
 
         await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
@@ -99,11 +129,7 @@ describe('Auth Routes - /callback', () => {
         mockGoogleInstance.verifyIdToken.mockResolvedValue({
             getPayload: () => ({ sub: 'google-user-123', email: 'test@example.com', name: 'Test User' }),
         } as any);
-        mockMongoInstance.getCollections.mockReturnValue({
-            users: {
-                findOneAndUpdate: jest.fn().mockRejectedValue(new Error('DB connection failed'))
-            }
-        } as any);
+        mockUserService.addOrUpdateUser.mockRejectedValue(new Error('DB connection failed'))
         
         await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
         

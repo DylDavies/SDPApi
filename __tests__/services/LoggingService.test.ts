@@ -1,4 +1,5 @@
 import { LoggingService } from '../../src/app/services/LoggingService';
+import { Singleton } from "../../src/app/models/classes/Singleton";
 
 const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
 const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -10,12 +11,12 @@ describe('LoggingService', () => {
         consoleLogSpy.mockClear();
         consoleErrorSpy.mockClear();
 
-        logger = LoggingService.getInstance();
+        logger = Singleton.getInstance(LoggingService);
     });
 
     it('should be a singleton', () => {
-        const instance1 = LoggingService.getInstance();
-        const instance2 = LoggingService.getInstance();
+        const instance1 = Singleton.getInstance(LoggingService);
+        const instance2 = Singleton.getInstance(LoggingService);
         expect(instance1).toBe(instance2);
     });
 
