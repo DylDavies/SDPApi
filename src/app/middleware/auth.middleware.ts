@@ -11,7 +11,8 @@ declare global {
 }
 
 export function attachUserMiddleware(req: Request, _: Response, next: NextFunction) {
-    const token = req.cookies.session;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
         return next();
@@ -29,7 +30,8 @@ export function attachUserMiddleware(req: Request, _: Response, next: NextFuncti
 }
 
 export function authenticationMiddleware(req: Request, res: Response, next: NextFunction) {
-    const token = req.cookies.session;
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
         return res.status(401).send("Unauthorized: No session token provided.");

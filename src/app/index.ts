@@ -24,7 +24,7 @@ async function main() {
     app.use(express.json());
     app.use(express.urlencoded({ extended: true }));
     app.use(cookieParser());
-    app.use(cors({ origin: ["*"] }));
+    app.use(cors({ origin: process.env.FRONTEND_URL , credentials: true}));
     app.set('trust proxy', 1);
     app.use(loggerMiddleware);
     app.use(attachUserMiddleware);

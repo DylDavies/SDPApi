@@ -69,15 +69,7 @@ router.get("/callback", async (req, res) => {
             expiresIn: "14d"
         })
 
-        const expiresIn = 60 * 60 * 24 * 14 * 1000; // 14 days
-
-        res.cookie("session", token, {
-            maxAge: expiresIn,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production"
-        });
-
-        res.redirect("/");
+        res.redirect(`${process.env.FRONTEND_URL}/login/callback?token=${token}`);
     } catch (error) {
         logger.error("An error occurred during the auth callback process.", error);
         res.status(500).send("An internal error occurred.");

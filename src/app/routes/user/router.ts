@@ -4,6 +4,7 @@ import { LoggingService } from '../../services/LoggingService';
 import { UserService } from '../../services/UserService';
 import MUser from '../../db/models/MUser.model';
 import { authenticationMiddleware } from '../../middleware/auth.middleware';
+import IPayloadUser from '../../models/interfaces/IPayloadUser.interface';
 
 const router = Router();
 const userService = Singleton.getInstance(UserService);
@@ -13,7 +14,7 @@ router.use(authenticationMiddleware);
 
 router.get('/', async (req, res) => {
     try{
-        const { id } =  req.user?.id;
+        const { id } =  req.user as IPayloadUser;
         const user = await userService.getUser(id);
 
         if(!user){
