@@ -1,0 +1,10 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["src/"],
+  "entryPointStrategy": "expand",
+  "out": "docs",
+  "tsconfig": "tsconfig.json",
+  "name": "Express API Documentation",
+  "readme": "README.md",
+  "exclude": ["**/__tests__/**"]
+}
