@@ -90,12 +90,6 @@ DB_CONN_STRING=mongodb://localhost:27017/tutor_management_dev
 DB_NAME=tutorcore
 ```
 
-5. (Optional) Seed the data. This populate the database with sample test data
-
-```bash
-npm run seed
-```
-
 ## 4. Backend API Setup(Express and Node)
 
 The backend provides endpoints for user profiles, scheduling and authentication
