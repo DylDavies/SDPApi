@@ -105,8 +105,7 @@ describe('Auth Routes - /callback', () => {
         await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
 
         expect(mockedJwt.sign).toHaveBeenCalled();
-        expect(mockResponse.cookie).toHaveBeenCalledWith('session', 'fake-jwt-token', expect.any(Object));
-        expect(mockResponse.redirect).toHaveBeenCalledWith(`${process.env.FRONTEND_URL}/auth/verify`);
+        expect(mockResponse.redirect).toHaveBeenCalledWith(`${process.env.FRONTEND_URL}/login/callback?token=fake-jwt-token`);
         expect(mockResponse.status).not.toHaveBeenCalled();
     });
 

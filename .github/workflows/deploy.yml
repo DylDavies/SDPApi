@@ -1,10 +1,9 @@
 name: Deploy Express API to DigitalOcean
 
 # This workflow triggers when a new release is published
-# on:
-#   release:
-#     types: [published]
-on: push
+on:
+  release:
+    types: [published]
 
 jobs:
   deploy:
