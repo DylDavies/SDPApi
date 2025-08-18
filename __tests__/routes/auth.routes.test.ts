@@ -89,7 +89,7 @@ describe('Auth Routes - /callback', () => {
         nextFunction = jest.fn();
     });
 
-    it('should redirect to / on successful authentication and user creation', async () => {
+    it('should status 200 and success message on successful authentication and user creation', async () => {
         mockGoogleInstance.getTokens.mockResolvedValue({ tokens: { id_token: 'fake-google-token' } });
         mockGoogleInstance.verifyIdToken.mockResolvedValue({
             getPayload: () => ({
@@ -105,8 +105,7 @@ describe('Auth Routes - /callback', () => {
         await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
 
         expect(mockedJwt.sign).toHaveBeenCalled();
-        expect(mockResponse.cookie).toHaveBeenCalledWith('session', 'fake-jwt-token', expect.any(Object));
-        expect(mockResponse.redirect).toHaveBeenCalledWith('/');
+        expect(mockResponse.redirect).toHaveBeenCalledWith(`${process.env.FRONTEND_URL}/login/callback?token=fake-jwt-token`);
         expect(mockResponse.status).not.toHaveBeenCalled();
     });
 

@@ -1,7 +1,6 @@
 import { ObjectId, WithId } from "mongodb";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import MUser from "../db/models/MUser.model";
-import { MongoService } from "./MongoService";
 import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MongoServiceInstance, { MongoService as MongoServiceClass } from "./MongoService";
@@ -42,13 +41,17 @@ export class UserService implements IService {
         return result as WithId<MUser> | null;
     }
 
-    public async getUser(id: ObjectId): Promise<WithId<MUser> | null> {
-        const user = await this._mongoService.getCollections().users.findOne({ _id: id  });
+    public async getUser(id: string): Promise<WithId<MUser> | null> {
+        if (!id || !ObjectId.isValid(id)) {
+            console.warn(`Invalid ID string provided to getUser: "${id}"`);
+            return null;
+        }
+
+        const user = await this._mongoService.getCollections().users.findOne({ _id: new ObjectId(id) });
         return user as WithId<MUser>;
     }
-
     
-    public async editUser(id: ObjectId, updateData: Partial<MUser>): Promise<WithId<MUser> | null> {
+    public async editUser(id: string, updateData: Partial<MUser>): Promise<WithId<MUser> | null> {
         
         //Ensures only safe fields can be changed
         const safeFields: (keyof MUser)[] = ['role', 'email', 'displayName', 'picture'];
@@ -62,7 +65,7 @@ export class UserService implements IService {
     }
 
         const result = await this._mongoService.getCollections().users.findOneAndUpdate(
-            {_id: id }, 
+            {_id: new ObjectId(id) }, 
             { $set: updatePayload}, 
             { 
                 returnDocument: 'after' 

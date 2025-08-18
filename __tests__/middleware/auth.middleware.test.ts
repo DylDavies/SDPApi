@@ -13,7 +13,7 @@ describe('authMiddleware', () => {
     beforeEach(() => {
         jest.resetAllMocks();
         mockRequest = {
-            cookies: {},
+            headers: {}
         };
         mockResponse = {
             status: jest.fn().mockReturnThis(),
@@ -29,7 +29,7 @@ describe('authMiddleware', () => {
     });
 
     it('should return 403 if the token is invalid or expired', () => {
-        mockRequest.cookies!.session = 'invalid-token';
+        mockRequest.headers!.authorization = 'Bearer invalid-token';
         mockedJwt.verify.mockImplementation(() => {
             throw new Error('Invalid token');
         });
@@ -42,15 +42,15 @@ describe('authMiddleware', () => {
     });
 
     it('should call next() if token is valid', () => {
-        const validToken = 'valid-token';
+        const validToken = 'Bearer valid-token';
         const userPayload = { userId: '123', email: 'test@example.com' };
-        mockRequest.cookies!.session = validToken;
+        mockRequest.headers!.authorization = validToken;
         
         mockedJwt.verify.mockImplementation(() => userPayload);
 
         authenticationMiddleware(mockRequest as Request, mockResponse as Response, nextFunction);
 
-        expect(mockedJwt.verify).toHaveBeenCalledWith(validToken, process.env.JWT_SECRET);
+        expect(mockedJwt.verify).toHaveBeenCalledWith(validToken.split(" ")[1], process.env.JWT_SECRET);
         expect(nextFunction).toHaveBeenCalledTimes(1);
         expect(mockResponse.status).not.toHaveBeenCalled();
     });
