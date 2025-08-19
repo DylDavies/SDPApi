@@ -1,29 +1,60 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ quiet: true });
 
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import fs from "fs";
+import path from "path";
 
-import AuthRouter from "./routes/auth/router";
-import { MongoService } from "./services/MongoService";
+import { LoggingService } from "./services/LoggingService";
+import { loggerMiddleware } from "./middleware/logger.middleware";
+import { attachUserMiddleware } from "./middleware/auth.middleware";
+import { ServiceManager } from "./services/ServiceManager";
+import { Singleton } from "./models/classes/Singleton";
 
 const app = express();
 const port = process.env.PORT || 8080;
+const logger = Singleton.getInstance(LoggingService);
 
-app.use(express.json());
-app.use(express.urlencoded({extended: true}));
-app.use(cookieParser());
-app.use(cors({origin: ["*"]}));
+async function main() {
+    // --- Centralized Service Loading ---
+    await ServiceManager.loadServices();
 
-MongoService.getInstance();
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(cookieParser());
+    app.use(cors({ origin: process.env.FRONTEND_URL , credentials: true}));
+    app.set('trust proxy', 1);
+    app.use(loggerMiddleware);
+    app.use(attachUserMiddleware);
 
-app.use("/auth", AuthRouter);
+    // --- Route Loading (can remain the same) ---
+    logger.info("Loading routes...");
+    const routes = fs.readdirSync(path.join(__dirname, "routes"));
+    const queue = [...routes.map(name => ({ name, path: path.join(__dirname, "routes"), route: "" }))];
 
-app.get("/", (req, res) => {
-    res.send("Hello World");
-});
+    while (queue.length > 0) {
+        const front = queue.shift();
+        if (!front) continue;
 
-app.listen(port, () => {
-    console.log(`Listening on port ${port}`);
+        if (fs.statSync(path.join(front.path, front.name)).isFile()) {
+            const imported = await import(path.join(front.path, front.name));
+            app.use("/api" + (front.route === "" ? "/" : front.route), imported.default);
+            logger.info(`Loaded routes for: ${"/api" + (front.route === "" ? "/" : front.route)}`);
+        } else {
+            const subroutes = fs.readdirSync(path.join(front.path, front.name));
+            queue.push(...subroutes.map(name => ({ name, path: path.join(front.path, front.name), route: `${front.route}/${front.name}` })));
+        }
+    }
+
+    // --- Start Server ---
+    app.listen(port, () => {
+        logger.info(`Listening on port ${port}`);
+    });
+}
+
+main().catch(error => {
+    logger.error("Failed to start the application.", error);
+    process.exit(1);
 });

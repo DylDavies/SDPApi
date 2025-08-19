@@ -1,0 +1,47 @@
+import { Request, Response, NextFunction } from "express";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import IPayloadUser from "../models/interfaces/IPayloadUser.interface";
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: JwtPayload | IPayloadUser
+        }
+    }
+}
+
+export function attachUserMiddleware(req: Request, _: Response, next: NextFunction) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return next();
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
+
+        req.user = decoded as IPayloadUser;
+
+        next();
+    } catch (_) {
+        return next();
+    }
+}
+
+export function authenticationMiddleware(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).send("Unauthorized: No session token provided.");
+    }
+
+    try {
+        jwt.verify(token, process.env.JWT_SECRET as string);
+
+        next();
+    } catch (_) {
+        return res.status(403).send('Forbidden: Invalid session token.');
+    }
+}
