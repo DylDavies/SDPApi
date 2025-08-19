@@ -37,8 +37,8 @@ router.patch('/', async (req,res) => {
 
         //data cleaning 
         delete updateData.sub;
-        delete (updateData as any).createdAt;
-        delete (updateData as any)._id;
+        delete (updateData as Partial<MUser>).createdAt;
+        delete (updateData as Partial<MUser>)._id;
 
         if(Object.keys(updateData).length === 0){
             return res.status(400).send("No valid fields provided");

@@ -4,11 +4,13 @@ import MUser from "../db/models/MUser.model";
 import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MongoServiceInstance, { MongoService as MongoServiceClass } from "./MongoService";
+import { LoggingService } from "./LoggingService";
 
 export class UserService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
 
     private _mongoService!: MongoServiceClass;
+    private logger = Singleton.getInstance(LoggingService);
 
     constructor() {}
 
@@ -44,7 +46,7 @@ export class UserService implements IService {
 
     public async getUser(id: string): Promise<WithId<MUser> | null> {
         if (!id || !ObjectId.isValid(id)) {
-            console.warn(`Invalid ID string provided to getUser: "${id}"`);
+            this.logger.warn(`Invalid ID string provided to getUser: "${id}"`);
             return null;
         }
 
@@ -56,7 +58,7 @@ export class UserService implements IService {
         
         //Ensures only safe fields can be changed
         const safeFields: (keyof MUser)[] = ['role', 'email', 'displayName', 'picture'];
-        const updatePayload: { [key: string]: any } = {}
+        const updatePayload: { [key: string]: unknown } = {}
         for (const key in updateData) {
             if(safeFields.includes(key as keyof MUser)){
                 if (updateData[key as keyof MUser] !== undefined) {

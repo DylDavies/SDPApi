@@ -24,7 +24,7 @@ export function attachUserMiddleware(req: Request, _: Response, next: NextFuncti
         req.user = decoded as IPayloadUser;
 
         next();
-    } catch (error) {
+    } catch (_) {
         return next();
     }
 }
@@ -41,7 +41,7 @@ export function authenticationMiddleware(req: Request, res: Response, next: Next
         jwt.verify(token, process.env.JWT_SECRET as string);
 
         next();
-    } catch (error) {
+    } catch (_) {
         return res.status(403).send('Forbidden: Invalid session token.');
     }
 }

@@ -31,19 +31,19 @@ async function main() {
 
     // --- Route Loading (can remain the same) ---
     logger.info("Loading routes...");
-    let routes = fs.readdirSync(path.join(__dirname, "routes"));
-    let queue = [...routes.map(name => ({ name, path: path.join(__dirname, "routes"), route: "" }))];
+    const routes = fs.readdirSync(path.join(__dirname, "routes"));
+    const queue = [...routes.map(name => ({ name, path: path.join(__dirname, "routes"), route: "" }))];
 
     while (queue.length > 0) {
-        let front = queue.shift();
+        const front = queue.shift();
         if (!front) continue;
 
         if (fs.statSync(path.join(front.path, front.name)).isFile()) {
-            let imported = await import(path.join(front.path, front.name));
+            const imported = await import(path.join(front.path, front.name));
             app.use("/api" + (front.route === "" ? "/" : front.route), imported.default);
             logger.info(`Loaded routes for: ${"/api" + (front.route === "" ? "/" : front.route)}`);
         } else {
-            let subroutes = fs.readdirSync(path.join(front.path, front.name));
+            const subroutes = fs.readdirSync(path.join(front.path, front.name));
             queue.push(...subroutes.map(name => ({ name, path: path.join(front.path, front.name), route: `${front.route}/${front.name}` })));
         }
     }
