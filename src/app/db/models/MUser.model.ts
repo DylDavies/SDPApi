@@ -16,6 +16,7 @@ export default class MUser {
         public displayName: string = "default",
         public role: EUserRole = EUserRole.User,
         public createdAt: Date = new Date(),
+        public firstLogin: boolean = true,
         public _id?: ObjectId
     ) {}
 }

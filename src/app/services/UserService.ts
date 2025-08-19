@@ -32,6 +32,7 @@ export class UserService implements IService {
                     role: user.role,
                     displayName: user.displayName,
                     createdAt: user.createdAt,
+                    firstLogin: user.firstLogin
                 }
             },
             { 
@@ -59,12 +60,14 @@ export class UserService implements IService {
         const safeFields: (keyof MUser)[] = ['role', 'email', 'displayName', 'picture'];
         const updatePayload: { [key: string]: unknown } = {}
         for (const key in updateData) {
-        if(safeFields.includes(key as keyof MUser)){
-            if (updateData[key as keyof MUser] !== undefined) {
-            updatePayload[key] = updateData[key as keyof MUser];
+            if(safeFields.includes(key as keyof MUser)){
+                if (updateData[key as keyof MUser] !== undefined) {
+                    updatePayload[key] = updateData[key as keyof MUser];
+                }
+            }
         }
-        }
-    }
+
+        updatePayload["firstLogin"] = false;
 
         const result = await this._mongoService.getCollections().users.findOneAndUpdate(
             {_id: new ObjectId(id) }, 
