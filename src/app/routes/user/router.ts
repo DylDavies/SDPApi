@@ -5,6 +5,7 @@ import { UserService } from '../../services/UserService';
 import MUser from '../../db/models/MUser.model';
 import { authenticationMiddleware } from '../../middleware/auth.middleware';
 import IPayloadUser from '../../models/interfaces/IPayloadUser.interface';
+import { WithId } from 'mongodb';
 
 const router = Router();
 const userService = Singleton.getInstance(UserService);
@@ -31,8 +32,8 @@ router.get('/', async (req, res) => {
 
 router.patch('/', async (req,res) => {
     try{
-        const { id } = req.user?.id;
-        const updateData: Partial<MUser> = req.body;
+        const { id } = req.user as IPayloadUser;
+        const updateData: Partial<WithId<MUser>> = req.body;
 
         //data cleaning 
         delete updateData.sub;
