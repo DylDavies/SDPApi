@@ -32,7 +32,7 @@ export class LoggingService implements IService {
      * @param message The primary message to log.
      * @param context Optional context or additional data to log.
      */
-    public debug(message: string, context?: any): void {
+    public debug(message: string, context?: unknown): void {
         this.log(message, ELogLevel.DEBUG, context);
     }
 
@@ -41,7 +41,7 @@ export class LoggingService implements IService {
      * @param message The primary message to log.
      * @param context Optional context or additional data to log.
      */
-    public info(message: string, context?: any): void {
+    public info(message: string, context?: unknown): void {
         this.log(message, ELogLevel.INFO, context);
     }
 
@@ -50,7 +50,7 @@ export class LoggingService implements IService {
      * @param message The primary message to log.
      * @param context Optional context or additional data to log.
      */
-    public warn(message: string, context?: any): void {
+    public warn(message: string, context?: unknown): void {
         this.log(message, ELogLevel.WARN, context);
     }
 
@@ -59,7 +59,7 @@ export class LoggingService implements IService {
      * @param message The primary message to log.
      * @param context Optional context or additional data, often an error object.
      */
-    public error(message: string, context?: any): void {
+    public error(message: string, context?: unknown): void {
         this.log(message, ELogLevel.ERROR, context);
     }
 
@@ -69,7 +69,7 @@ export class LoggingService implements IService {
      * @param level The log level (DEBUG, INFO, WARN, ERROR).
      * @param context Any additional data to be logged.
      */
-    private log(message: string, level: ELogLevel, context?: any): void {
+    private log(message: string, level: ELogLevel, context?: unknown): void {
         const timestamp = new Date().toISOString();
         const color = this.getColorForLevel(level);
 

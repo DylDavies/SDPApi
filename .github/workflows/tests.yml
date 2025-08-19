@@ -29,6 +29,9 @@ jobs:
       - name: Coveralls GitHub Action
         uses: coverallsapp/github-action@v2.3.6
 
+      - name: Run linter
+        run: npm run lint
+
       - name: Build application
         run: npm run build
         env:
