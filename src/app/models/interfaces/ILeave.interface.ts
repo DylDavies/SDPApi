@@ -1,9 +1,8 @@
 import { ELeave } from "../enums/ELeave.enum"
 
-export default interface ILeave {
+export interface ILeave {
     id: string,
-    tutorID: string,
-    tutroName: string,
+    tutorName: string,
     reason: string,
     startDate: Date,
     endDate: Date,

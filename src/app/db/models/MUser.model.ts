@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb";
 import { IModelConfig } from "../../models/interfaces/IModelConfig.interface";
 import { EUserRole } from "../../models/enums/EUserRole.enum";
+import {ILeave} from "../../models/interfaces/ILeave.interface";
 
 const config: IModelConfig = {
     collectionName: "users"
@@ -17,6 +18,7 @@ export default class MUser {
         public role: EUserRole = EUserRole.User,
         public createdAt: Date = new Date(),
         public firstLogin: boolean = true,
+        public leave: ILeave[] = [],
         public _id?: ObjectId
     ) {}
 }

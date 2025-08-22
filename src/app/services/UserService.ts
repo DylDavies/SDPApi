@@ -5,6 +5,7 @@ import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MongoServiceInstance, { MongoService as MongoServiceClass } from "./MongoService";
 import { LoggingService } from "./LoggingService";
+import { ILeave } from "../models/interfaces/ILeave.interface";
 
 export class UserService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -43,6 +44,32 @@ export class UserService implements IService {
 
         return result as WithId<MUser> | null;
     }
+     public async addLeave(id: string, leave: ILeave) {
+            const result = await this._mongoService.getCollections().users.findOneAndUpdate(
+                { _id: new ObjectId(id)},
+                { 
+                    $set: {
+                        approved: leave.approved,
+                        startDate: leave.startDate,
+                        endDate: leave.endDate
+                    },
+                    $setOnInsert: {
+                        tutorName: leave.tutorName,
+                        reason: leave.reason,
+                        startDate: leave.startDate,
+                        endDate: leave.endDate,
+                        approved: leave.approved
+                        
+                    }
+                },
+                { 
+                    upsert: true,
+                    returnDocument: 'after'
+                }
+            );
+    
+            return result as WithId<MUser> | null;
+        }
 
     public async getUser(id: string): Promise<WithId<MUser> | null> {
         if (!id || !ObjectId.isValid(id)) {
