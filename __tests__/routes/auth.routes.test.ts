@@ -1,4 +1,3 @@
-import { populate } from 'dotenv';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
