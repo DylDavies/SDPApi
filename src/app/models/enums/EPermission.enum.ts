@@ -20,4 +20,10 @@ export enum EPermission {
     DASHBOARD_VIEW = 'dashboard:view',
     ADMIN_DASHBOARD_VIEW = 'admin_dashboard:view',
     PROFILE_PAGE_VIEW = 'profile_page:view',
+
+    // Bundle Management Permissions
+    BUNDLES_CREATE = 'bundles:create',
+    BUNDLES_VIEW = 'bundles:view',
+    BUNDLES_EDIT = 'bundles:edit',
+    BUNDLES_DELETE = 'bundles:delete',
 }
