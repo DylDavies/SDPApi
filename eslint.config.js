@@ -50,6 +50,14 @@ export default tseslint.config(
     }
   },
 
+    // --- OVERRIDE: For Seed Files ---
+  {
+    files: ['**/db/seed.ts'],
+    rules: {
+      'no-console': 'off'
+    }
+  },
+
   {
     ignores: [
       'node_modules', 
