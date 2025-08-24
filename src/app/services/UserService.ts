@@ -5,6 +5,8 @@ import { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
 import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
+import { ILeave } from "../models/interfaces/ILeave.interface";
+import { ELeave } from "../models/enums/ELeave.enum";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -35,6 +37,38 @@ export class UserService implements IService {
             { upsert: true, new: true, runValidators: true }
         );
         return user;
+    }
+    /**
+     * @description
+     * This is the new method to add a leave request for a specific user.
+     * It finds the user by their ID and pushes a new leave object into their 'leave' array.
+     * @param userId The ID of the user submitting the request.
+     * @param leaveData The details of the leave request.
+     * @returns The updated user document with the new leave request, or null if the user isn't found.
+     */
+    public async addLeaveRequest(userId: string, leaveData: { reason: string, startDate: Date, endDate: Date }): Promise<IUser | null> {
+        if (!Types.ObjectId.isValid(userId)) {
+            this.logger.warn(`Invalid ID string provided to addLeaveRequest: "${userId}"`);
+            return null;
+        }
+
+        const { reason, startDate, endDate } = leaveData;
+
+        // The status is not included in the input because it should always start as 'Pending'.
+        const newLeaveRequest = {
+            reason,
+            startDate,
+            endDate,
+            approved: ELeave.Pending // Default status
+        };
+
+        // Find the user and push the new leave request into their 'leave' array.
+        // The '$push' operator is perfect for adding items to an array in MongoDB.
+        return MUser.findByIdAndUpdate(
+            userId,
+            { $push: { leave: newLeaveRequest } },
+            { new: true, runValidators: true } // 'new: true' returns the modified document
+        );
     }
 
     /**
