@@ -6,27 +6,48 @@ import { LoggingService } from "../../services/LoggingService";
 import { Singleton } from "../../models/classes/Singleton";
 
 const router = Router();
-// const proficiencyService = Singleton.getInstance(ProficiencyService);
 const logger = Singleton.getInstance(LoggingService);
 
-//router.use(authenticationMiddleware);
+router.use(authenticationMiddleware);
 
 router.post("/", async(req, res) =>{
-    const { name ,subjects } = req.body;
+    try{
+        const { name ,subjects } = req.body;
 
-    if(!name || !subjects){
-        return res.status(400).json({ eror: "Missing name or subjects" });
+        if(!name || !subjects){
+            return res.status(400).json({ eror: "Missing name or subjects" });
+        }
+
+        const prof = new MProficiencies(name, subjects);
+        const result = await ProficiencyService.addOrUpdateProficiency(prof);
+
+        if(result){
+            res.status(201).json(result);
+        }
+        else{
+            res.status(500).json({ error: "failed to add or update proficiency" });
+        }
     }
-
-    const prof = new MProficiencies(name, subjects);
-    const result = await ProficiencyService.addOrUpdateProficiency(prof);
-
-    if(result){
-        res.status(201).json(result);
-    }
-    else{
-        res.status(500).json({ error: "failed to add or update proficiency" });
+    catch(error){
+        res.status(403).json({ error: "Error updating or adding a proficiency" });
     }
 });
+
+router.get("/fetchAll", async(req, res) =>{
+    try{
+        const profs = await ProficiencyService.getProficiences();
+
+        if(!profs){
+            logger.error("Proficiencies not returned");
+            return res.status(500).json({ error: "Failed to fetch proficiencies"});
+        }
+
+        return res.status(200).json(profs);
+    }
+    catch(error){
+        logger.error("Error fetching proficiencies: ", error);
+        return res.status(500).json({ error: "Internal Server Error" });
+    }
+})
 
 export default router;

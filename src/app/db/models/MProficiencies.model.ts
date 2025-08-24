@@ -1,17 +1,16 @@
-import { ObjectId } from "mongodb";
-import { IModelConfig } from "../../models/interfaces/IModelConfig.interface";
+import { Schema, model, Document } from "mongoose";
 import ISubject from "../../models/interfaces/ISubject.interface";
 
-const config: IModelConfig = {
-    collectionName: "proficiences"
+export interface IProficiency extends Document{
+    name: string;
+    subjects: ISubject;
 }
 
-export { config };
+const ProficiencySchema = new Schema<IProficiency>({
+    name: { type: String, required: true, unique: true },
+    subjects: { type: Object, required: true }
+});
 
-export default class MProficiencies {
-    constructor(
-        public name: string, // name of a syllabus
-        public subjects: ISubject,
-        public _id?: ObjectId
-    ) {}
-}
+const MProficiencies = model<IProficiency>("Proficiencies", ProficiencySchema);
+
+export default MProficiencies;

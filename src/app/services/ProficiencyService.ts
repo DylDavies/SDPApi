@@ -1,30 +1,21 @@
 import { WithId } from "mongodb";
-import MProficiencies from "../db/models/MProficiencies.model";
+import MProficiencies, { IProficiency } from "../db/models/MProficiencies.model";
 import { Singleton } from "../models/classes/Singleton";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { IService } from "../models/interfaces/IService.interface";
 import { LoggingService } from "./LoggingService";
-import MongoServiceInstance, { MongoService as MongoServiceClass } from "./MongoService";
 
-export class ProficiencyService implements IService {
-    static addOrUpdateProficiency(prof: MProficiencies) {
-        throw new Error("Method not implemented.");
-    }
-    
+export class ProficiencyService implements IService {    
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
-    private _mongoService!: MongoServiceClass;
     private logger = Singleton.getInstance(LoggingService);
 
-    constructor() {}
-
     public async init(): Promise<void>{
-        this._mongoService = MongoServiceInstance;
         return Promise.resolve();
     }
 
-    public async addOrUpdateProficiency(prof: MProficiencies): Promise<WithId<MProficiencies> | null>{
+    public async addOrUpdateProficiency(prof: IProficiency): Promise<IProficiency | null>{
         try{
-            const result =  await this._mongoService.getCollections().proficiences.findOneAndUpdate(
+            const result =  MProficiencies.findOneAndUpdate(
                 { name: prof.name },
                 {
                     $set: {
@@ -36,11 +27,12 @@ export class ProficiencyService implements IService {
                 },
                 {
                     upsert: true,
-                    returnDocument: 'after'
+                    new: true,
+                    runValidators: true
                 }
             );
             this.logger.info(`Proficiency added or updated: ${prof.name}`);
-            return result as WithId<MProficiencies> | null; 
+            return result;
         }
         catch(error){
             this.logger.error("Error when adding or updating proficiency: ",error);
@@ -48,21 +40,17 @@ export class ProficiencyService implements IService {
         }     
     }
 
-    public async getProficiences():Promise<WithId<MProficiencies>[] | null>{
+    public async getProficiences():Promise<IProficiency[] | null>{
         let profs;
         try{
-            profs = await this._mongoService.getCollections().proficiences.find().toArray();
+            profs = await MProficiencies.find()
         }
         catch(error){
             this.logger.error("Error when fetching proficiencies: ", error);
             return null;
         }
-        return profs as WithId<MProficiencies>[];
+        return profs;
     }
 }
-
-
-
-
 
 export default Singleton.getInstance(ProficiencyService);
