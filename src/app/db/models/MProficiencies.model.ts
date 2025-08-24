@@ -10,7 +10,7 @@ export { config };
 
 export default class MProficiencies {
     constructor(
-        public name: string,
+        public name: string, // name of a syllabus
         public subjects: ISubject,
         public _id?: ObjectId
     ) {}
