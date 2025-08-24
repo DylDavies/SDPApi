@@ -1,56 +1,44 @@
-import * as mongodb from "mongodb";
+import mongoose from 'mongoose';
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { LoggingService } from "./LoggingService";
-import { readdirSync } from "fs";
-import path from "path";
-import { IModelConfig } from "../models/interfaces/IModelConfig.interface";
 import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 
+/**
+ * Manages the connection to the MongoDB database using Mongoose.
+ * This service ensures a single, robust connection is established when the application starts.
+ */
 export class MongoService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.High;
-
-    private _collections: { [key: string]: mongodb.Collection } = {};
-    private _client: mongodb.MongoClient;
-    private _db: mongodb.Db | null;
     private logger = Singleton.getInstance(LoggingService);
 
     constructor() {
         if (!process.env.DB_CONN_STRING) {
             this.logger.error("Database connection string (DB_CONN_STRING) not found.");
-            throw new Error("DB_CONN_STRING is not set.");
+            throw new Error("DB_CONN_STRING is not set in environment variables.");
         }
-        this._client = new mongodb.MongoClient(process.env.DB_CONN_STRING as string);
-        this._db = null;
     }
 
+    /**
+     * Initializes the Mongoose connection to the MongoDB database.
+     */
     public async init(): Promise<void> {
         try {
-            await this._client.connect();
-            this._db = this._client.db(process.env.DB_NAME);
+            // Mongoose handles connection pooling automatically.
+            await mongoose.connect(process.env.DB_CONN_STRING as string, {
+                dbName: process.env.DB_NAME
+            });
 
-            const modelsDir = path.join(__dirname, "../db/models");
-            const modelFiles = readdirSync(modelsDir).filter(file => file.endsWith('.js') || file.endsWith('.ts'));
+            this.logger.info(`Successfully connected to MongoDB database: ${process.env.DB_NAME}`);
 
-            for (const modelFile of modelFiles) {
-                // const { config }: { config: IModelConfig } = await import(path.join(__dirname, "../db/models", model));
+            // Optional: Enable Mongoose debug logging if needed
+            // mongoose.set('debug', true);
 
-                // this._collections[config.collectionName] = this._db.collection(config.collectionName);
-
-                const { config }: { config: IModelConfig } = await import(path.join(modelsDir, modelFile));
-                if (config && config.collectionName) {
-                    this._collections[config.collectionName.toLowerCase()] = this._db.collection(config.collectionName);
-                }
-            }
-            this.logger.info(`Successfully connected to database: ${this._db.databaseName}`);
         } catch (error) {
-            this.logger.error("Failed to initialize MongoService", error);
+            this.logger.error("Failed to connect to MongoDB via Mongoose", error);
+            // Propagate the error to stop the application startup if the DB connection fails.
             throw error;
         }
-    }
-
-    public getCollections(): { [key: string]: mongodb.Collection } {
-        return this._collections;
     }
 }
 

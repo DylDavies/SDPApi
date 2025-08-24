@@ -2,10 +2,9 @@ import { Router } from 'express';
 import { Singleton } from '../../models/classes/Singleton';
 import { LoggingService } from '../../services/LoggingService';
 import { UserService } from '../../services/UserService';
-import MUser from '../../db/models/MUser.model';
+import { IUser } from '../../db/models/MUser.model';
 import { authenticationMiddleware } from '../../middleware/auth.middleware';
 import IPayloadUser from '../../models/interfaces/IPayloadUser.interface';
-import { WithId } from 'mongodb';
 
 const router = Router();
 const userService = Singleton.getInstance(UserService);
@@ -33,12 +32,12 @@ router.get('/', async (req, res) => {
 router.patch('/', async (req,res) => {
     try{
         const { id } = req.user as IPayloadUser;
-        const updateData: Partial<WithId<MUser>> = req.body;
+        const updateData: Partial<IUser> = req.body;
 
         //data cleaning 
-        delete updateData.sub;
-        delete (updateData as Partial<MUser>).createdAt;
-        delete (updateData as Partial<MUser>)._id;
+        delete updateData.googleId;
+        delete (updateData as Partial<IUser>).createdAt;
+        delete (updateData as Partial<IUser>)._id;
 
         if(Object.keys(updateData).length === 0){
             return res.status(400).send("No valid fields provided");

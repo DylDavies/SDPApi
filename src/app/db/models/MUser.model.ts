@@ -1,24 +1,33 @@
-import { ObjectId } from "mongodb";
-import { IModelConfig } from "../../models/interfaces/IModelConfig.interface";
-import { EUserRole } from "../../models/enums/EUserRole.enum";
-import {ILeave} from "../../models/interfaces/ILeave.interface";
 
-const config: IModelConfig = {
-    collectionName: "users"
+import { Schema, model, Document, Types } from 'mongoose';
+import { EUserType } from '../../models/enums/EUserType.enum';
+
+
+export interface IUser extends Document {
+    _id: Types.ObjectId;
+    googleId: string;
+    email: string;
+    displayName: string;
+    picture?: string;
+    firstLogin: boolean;
+    createdAt: Date;
+    type: EUserType;
+    roles: Types.ObjectId[];
 }
 
-export { config };
+const UserSchema = new Schema<IUser>({
+    googleId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, trim: true },
+    displayName: { type: String, required: true, trim: true },
+    picture: { type: String },
+    firstLogin: { type: Boolean, default: true },
+    type: { type: String, values: Object.values(EUserType), required: true, default: EUserType.Client },
+    roles: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Role'
+    }]
+}, { timestamps: true });
 
-export default class MUser {
-    constructor(
-        public sub: string,
-        public email: string,
-        public picture: string = "",
-        public displayName: string = "default",
-        public role: EUserRole = EUserRole.User,
-        public createdAt: Date = new Date(),
-        public firstLogin: boolean = true,
-        public leave: ILeave[] = [],
-        public _id?: ObjectId
-    ) {}
-}
+const MUser = model<IUser>('User', UserSchema);
+
+export default MUser;
