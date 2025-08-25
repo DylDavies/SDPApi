@@ -11,6 +11,8 @@ export interface IUser extends Document {
     createdAt: Date;
     type: EUserType;
     roles: Types.ObjectId[];
+    pending: boolean;
+    disabled: boolean;
 }
 
 const UserSchema = new Schema<IUser>({
@@ -23,7 +25,17 @@ const UserSchema = new Schema<IUser>({
     roles: [{
         type: Schema.Types.ObjectId,
         ref: 'Role'
-    }]
+    }],
+    pending: {
+        type: Boolean,
+        required: true,
+        default: true
+    },
+    disabled: {
+        type: Boolean,
+        required: true,
+        default: false
+    }
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);

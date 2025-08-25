@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { EPermission } from '..//models/enums/EPermission.enum';
 import MRole from './models/MRole.model';
-import 'dotenv/config'; // Make sure to install dotenv: npm install dotenv
+import 'dotenv/config';
 
 /**
  * Defines the default roles and their relationships.
@@ -12,7 +12,8 @@ const defaultRoles = [
     {
         name: 'Admin',
         parent: null, // This is the root role
-        permissions: Object.values(EPermission), // Admins get all permissions
+        permissions: Object.values(EPermission), // Admins get all permissions,
+        color: "#f44336"
     },
     {
         name: 'Tutor',
@@ -21,7 +22,8 @@ const defaultRoles = [
             EPermission.DASHBOARD_VIEW,
             EPermission.PROFILE_PAGE_VIEW,
             EPermission.USERS_VIEW // Tutors can view users
-        ]
+        ],
+        color: "#673ab7"
     },
     {
         name: 'User',
@@ -29,7 +31,8 @@ const defaultRoles = [
         permissions: [
             EPermission.DASHBOARD_VIEW,
             EPermission.PROFILE_PAGE_VIEW
-        ]
+        ],
+        color: "#009688"
     }
 ];
 
@@ -52,7 +55,7 @@ const seedDatabase = async () => {
         // Use findOneAndUpdate with upsert to create or update roles without the parent link first.
         return MRole.findOneAndUpdate(
             { name: roleData.name },
-            { $set: { name: roleData.name, permissions: roleData.permissions } },
+            { $set: { name: roleData.name, permissions: roleData.permissions, color: roleData.color } },
             { upsert: true, new: true }
         );
     });

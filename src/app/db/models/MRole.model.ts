@@ -5,6 +5,7 @@ export interface IRole extends Document {
     name: string;
     permissions: EPermission[];
     parent: Types.ObjectId | null; // A reference to the parent role, or null for the root role
+    color: string;
 }
 
 const RoleSchema = new Schema<IRole>({
@@ -23,6 +24,10 @@ const RoleSchema = new Schema<IRole>({
         type: Schema.Types.ObjectId,
         ref: 'Role', // Self-referencing relationship
         default: null
+    },
+    color: {
+        type: String,
+        required: true
     }
 }, { timestamps: true });
 

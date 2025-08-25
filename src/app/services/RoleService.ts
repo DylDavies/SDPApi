@@ -12,6 +12,7 @@ type LeanRole = {
     name: string;
     permissions: EPermission[];
     parent: Types.ObjectId | null;
+    color: string;
 }
 
 // Define a type for a role node in our tree structure. It's a plain object, not a Mongoose document.
@@ -35,20 +36,41 @@ export class RoleService implements IService {
      * @param name The name for the new role.
      * @param permissions The permissions to assign to the new role.
      * @param parentId The ID of the parent role. Can be null for a root role.
+     * @param color The color of the role.
      * @returns The newly created role document.
      */
-    public async createRole(name: string, permissions: EPermission[], parentId: string | null): Promise<IRole> {
+    public async createRole(name: string, permissions: EPermission[], parentId: string | null, color: string): Promise<IRole> {
         const parent = parentId ? new Types.ObjectId(parentId) : null;
-        const newRole = new MRole({ name, permissions, parent });
+        const newRole = new MRole({ name, permissions, parent, color });
         await newRole.save();
         return newRole;
+    }
+
+    /**
+     * Updates an existing role.
+     * @param name The name for the new role.
+     * @param permissions The permissions to assign to the new role.
+     * @param parentId The ID of the parent role. Can be null for a root role.
+     * @param color The color of the role.
+     * @returns The updated role document.
+     */
+    public async updateRole(_id: string, name: string, permissions: EPermission[], parentId: string | null, color: string): Promise<IRole> {
+        const parent = parentId ? new Types.ObjectId(parentId) : null;
+        const res = await MRole.findByIdAndUpdate(_id, {
+            name,
+            permissions,
+            color,
+            parent
+        });
+
+        return res as IRole;
     }
 
     /**
      * Retrieves all roles from the database and structures them as a tree.
      * @returns A tree structure of all roles.
      */
-    public async getRoleTree(): Promise<RoleNode[]> {
+    public async getRoleTree(): Promise<RoleNode> {
         const allRoles: LeanRole[] = await MRole.find().lean();
         
         const roleMap = new Map<string, RoleNode>();
@@ -57,7 +79,7 @@ export class RoleService implements IService {
             roleMap.set(role._id.toString(), { ...role, children: [] });
         });
         
-        const tree: RoleNode[] = [];
+        let root: RoleNode = allRoles.find(v => !v.parent) as RoleNode;
 
         // Second pass: link children to their parents.
         roleMap.forEach(node => {
@@ -67,12 +89,12 @@ export class RoleService implements IService {
                     parentNode.children.push(node);
                 }
             } else {
-                // If a node has no parent, it's a root of the tree.
-                tree.push(node);
+                // If a node has no parent, it's the root of the tree.
+                root = node;
             }
         });
         
-        return tree;
+        return root;
     }
     
     /**
@@ -81,6 +103,8 @@ export class RoleService implements IService {
      * @returns The deleted role document, or throws an error if deletion is not safe.
      */
     public async deleteRole(roleId: string): Promise<IRole> {
+        // TODO: Update to deny deletion of root role
+
         const childRoles = await MRole.countDocuments({ parent: roleId });
         if (childRoles > 0) {
             throw new Error("Cannot delete a role that has child roles. Please reassign children first.");
