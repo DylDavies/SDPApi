@@ -54,16 +54,14 @@ export class UserService implements IService {
 
         const { reason, startDate, endDate } = leaveData;
 
-        // The status is not included in the input because it should always start as 'Pending'.
         const newLeaveRequest = {
             reason,
             startDate,
             endDate,
-            approved: ELeave.Pending // Default status
+            approved: ELeave.Pending 
         };
 
         // Find the user and push the new leave request into their 'leave' array.
-        // The '$push' operator is perfect for adding items to an array in MongoDB.
         return MUser.findByIdAndUpdate(
             userId,
             { $push: { leave: newLeaveRequest } },
