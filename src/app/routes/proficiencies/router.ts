@@ -15,7 +15,7 @@ router.post("/", async(req, res) =>{
         const { name ,subjects } = req.body;
 
         if(!name || !subjects){
-            return res.status(400).json({ eror: "Missing name or subjects" });
+            return res.status(400).json({ error: "Missing name or subjects" });
         }
 
         const prof = new MProficiencies(name, subjects);
@@ -25,10 +25,11 @@ router.post("/", async(req, res) =>{
             res.status(201).json(result);
         }
         else{
-            res.status(500).json({ error: "failed to add or update proficiency" });
+            res.status(500).json({ error: "failed to add or update proficiency"});
         }
     }
     catch(error){
+        logger.error("Error updating or adding a proficiency: ", error);
         res.status(403).json({ error: "Error updating or adding a proficiency" });
     }
 });

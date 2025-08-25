@@ -1,4 +1,3 @@
-import { WithId } from "mongodb";
 import MProficiencies, { IProficiency } from "../db/models/MProficiencies.model";
 import { Singleton } from "../models/classes/Singleton";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
