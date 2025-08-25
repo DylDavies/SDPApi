@@ -16,6 +16,8 @@ export interface IUser extends Document {
     type: EUserType;
     roles: Types.ObjectId[];
     leave: ILeave [];
+    pending: boolean;
+    disabled: boolean;
 }
 const LeaveSchema = new Schema<ILeave>({
     reason: { type: String, required: true, trim: true },
@@ -36,7 +38,17 @@ const UserSchema = new Schema<IUser>({
         type: Schema.Types.ObjectId,
         ref: 'Role'
     }],
-    leave: [LeaveSchema]
+    leave: [LeaveSchema],
+    pending: {
+        type: Boolean,
+        required: true,
+        default: true
+    },
+    disabled: {
+        type: Boolean,
+        required: true,
+        default: false
+    }
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);
