@@ -103,5 +103,47 @@ router.post("/:userId/type", hasPermission(EPermission.ADMIN_DASHBOARD_VIEW), as
         res.status(403).json({ message: "Error updating user type", error: (error as Error).message });
     }
 });
+// Add this import to the top of your file
+import { ELeave } from "../../models/enums/ELeave.enum";
+
+// POST /api/users/:userId/leave - Submit a new leave request
+// This route is for a user to submit their own leave request
+// It would not require a userId in the path if the user's ID is taken from the auth token
+// but the UserService function takes it as a parameter so we will add it here for consistency
+router.post("/:userId/leave", async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const leaveData = req.body;
+
+        const updatedUser = await userService.addLeaveRequest(userId, leaveData);
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found." });
+        }
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        res.status(500).json({ message: "Error adding leave request", error: (error as Error).message });
+    }
+});
+
+// PATCH /api/users/:userId/leave/:leaveId - Approve or deny a leave request
+// Using PATCH is standard for updating a specific part of a resource
+router.patch("/:userId/leave/:leaveId", async (req, res) => {
+    try {
+        const { userId, leaveId } = req.params;
+        const { status } = req.body;
+
+        if (!status || (status !== ELeave.Approved && status !== ELeave.Denied)) {
+            return res.status(400).send("A valid status ('Approved' or 'Denied') is required.");
+        }
+
+        const updatedUser = await userService.updateLeaveRequestStatus(userId, leaveId, status);
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User or leave request not found." });
+        }
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating leave request status", error: (error as Error).message });
+    }
+});
 
 export default router;
