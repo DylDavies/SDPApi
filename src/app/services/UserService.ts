@@ -5,6 +5,8 @@ import { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
 import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
+import { ELeave } from "../models/enums/ELeave.enum";
+import { EUserType } from "../models/enums/EUserType.enum";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -35,6 +37,36 @@ export class UserService implements IService {
             { upsert: true, new: true, runValidators: true }
         );
         return user;
+    }
+    /**
+     * @description
+     * This is the new method to add a leave request for a specific user.
+     * It finds the user by their ID and pushes a new leave object into their 'leave' array.
+     * @param userId The ID of the user submitting the request.
+     * @param leaveData The details of the leave request.
+     * @returns The updated user document with the new leave request, or null if the user isn't found.
+     */
+    public async addLeaveRequest(userId: string, leaveData: { reason: string, startDate: Date, endDate: Date }): Promise<IUser | null> {
+        if (!Types.ObjectId.isValid(userId)) {
+            this.logger.warn(`Invalid ID string provided to addLeaveRequest: "${userId}"`);
+            return null;
+        }
+
+        const { reason, startDate, endDate } = leaveData;
+
+        const newLeaveRequest = {
+            reason,
+            startDate,
+            endDate,
+            approved: ELeave.Pending 
+        };
+
+        // Find the user and push the new leave request into their 'leave' array.
+        return MUser.findByIdAndUpdate(
+            userId,
+            { $push: { leave: newLeaveRequest } },
+            { new: true, runValidators: true } // 'new: true' returns the modified document
+        );
     }
 
     /**
@@ -71,13 +103,13 @@ export class UserService implements IService {
      * @param targetUserId The ID of the user to whom the role will be assigned.
      * @param roleId The ID of the role to assign.
      */
-    public async assignRoleToUser(performingUserId: string, targetUserId: string, roleId: string): Promise<IUser> {
+    public async assignRoleToUser(performingUserId: string, targetUserId: string, roleId: string, isAdmin: boolean = false): Promise<IUser> {
         const performingUser = await MUser.findById(performingUserId).populate('roles');
         if (!performingUser) throw new Error("Performing user not found.");
 
         const performingUserDescendants = await this.roleService.getDescendantRoleIds(performingUser.roles as Types.ObjectId[]);
         
-        if (!performingUserDescendants.has(roleId)) {
+        if (!performingUserDescendants.has(roleId) && !isAdmin) {
             throw new Error("Forbidden: You can only assign roles that are below your own in the hierarchy.");
         }
 
@@ -92,17 +124,58 @@ export class UserService implements IService {
      * @param targetUserId The ID of the user from whom the role will be removed.
      * @param roleId The ID of the role to remove.
      */
-    public async removeRoleFromUser(performingUserId: string, targetUserId: string, roleId: string): Promise<IUser> {
+    public async removeRoleFromUser(performingUserId: string, targetUserId: string, roleId: string, isAdmin: boolean = false): Promise<IUser> {
         const performingUser = await MUser.findById(performingUserId).populate('roles');
         if (!performingUser) throw new Error("Performing user not found.");
 
         const performingUserDescendants = await this.roleService.getDescendantRoleIds(performingUser.roles as Types.ObjectId[]);
 
-        if (!performingUserDescendants.has(roleId)) {
+        if (!performingUserDescendants.has(roleId) && !isAdmin) {
             throw new Error("Forbidden: You can only manage roles that are below your own in the hierarchy.");
         }
 
         await MUser.updateOne({ _id: targetUserId }, { $pull: { roles: roleId } });
+
+        return (await MUser.findById(targetUserId).populate('roles'))!;
+    }
+
+    /**
+     * Approves a user
+     * @param targetUserId The ID of the user whom will be approved.
+     */
+    public async approveUser(targetUserId: string): Promise<IUser> {
+        await MUser.updateOne({ _id: targetUserId }, { $set: { pending: false } });
+
+        return (await MUser.findById(targetUserId).populate('roles'))!;
+    }
+
+    /**
+     * Disables a user
+     * @param targetUserId The ID of the user whom will be disabled.
+     */
+    public async disableUser(targetUserId: string): Promise<IUser> {
+        await MUser.updateOne({ _id: targetUserId }, { $set: { disabled: true } });
+
+        return (await MUser.findById(targetUserId).populate('roles'))!;
+    }
+
+    /**
+     * Enables a user
+     * @param targetUserId The ID of the user whom will be enabled.
+     */
+    public async enableUser(targetUserId: string): Promise<IUser> {
+        await MUser.updateOne({ _id: targetUserId }, { $set: { disabled: false } });
+
+        return (await MUser.findById(targetUserId).populate('roles'))!;
+    }
+
+    /**
+     * Updates a user type
+     * @param targetUserId The ID of the user whom will be enabled.
+     * @param type The type the user will be updated to.
+     */
+    public async updateUserType(targetUserId: string, type: EUserType): Promise<IUser> {
+        await MUser.updateOne({ _id: targetUserId }, { $set: { type } });
 
         return (await MUser.findById(targetUserId).populate('roles'))!;
     }
