@@ -124,7 +124,7 @@ router.post("/:userId/proficiencies", async(req, res) =>{
         return res.status(200).json(updatedUser);
     } 
     catch (error) {
-        res.status(500).send("Internal Server Error");
+        res.status(500).json({ message: "Error updating user proficiencies", error: (error as Error).message });
     }
 });
 
