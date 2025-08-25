@@ -12,9 +12,15 @@ export class ProficiencyService implements IService {
         return Promise.resolve();
     }
 
+    /**
+     * Adds a new proficiency or updates an existing one.
+     * - If a proficiency by that name exists then that proficiency will be updated rather than creating a new one
+     * @param prof The proficiency to add or update.
+     * @returns The added or updated proficiency, or null if there was an error.
+     */
     public async addOrUpdateProficiency(prof: IProficiency): Promise<IProficiency | null>{
         try{
-            const result =  MProficiencies.findOneAndUpdate(
+            const result =  await MProficiencies.findOneAndUpdate(
                 { name: prof.name },
                 {
                     $set: {
@@ -38,6 +44,11 @@ export class ProficiencyService implements IService {
             return null;
         }     
     }
+
+    /**
+     * Fetch all proficiencies from the database
+     * @returns {Promise<IProficiency[] | null>} Array of proficiencies, or null if fetching fails.
+     */
 
     public async getProficiences():Promise<IProficiency[] | null>{
         let profs;

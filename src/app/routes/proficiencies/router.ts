@@ -9,6 +9,15 @@ const router = Router();
 const logger = Singleton.getInstance(LoggingService);
 
 router.use(authenticationMiddleware);
+/**
+ * @oute POST/
+ * @description Creates a new proficiency or updates an existing one
+ * @access Protected required authentication
+ * 
+ * - Validates that the name and subjects are provided in the body
+ * - If a proficiency with that name exists then it will simply update that proficiency instead 
+ *   of creating a new proficiency, by adding new subjects and or grades for that subject
+ */
 
 router.post("/", async(req, res) =>{
     try{
@@ -18,7 +27,7 @@ router.post("/", async(req, res) =>{
             return res.status(400).json({ error: "Missing name or subjects" });
         }
 
-        const prof = new MProficiencies(name, subjects);
+        const prof = new MProficiencies({ name, subjects });
         const result = await ProficiencyService.addOrUpdateProficiency(prof);
 
         if(result){
@@ -33,6 +42,15 @@ router.post("/", async(req, res) =>{
         res.status(403).json({ error: "Error updating or adding a proficiency" });
     }
 });
+
+/**
+ * @route GET /fetchAll
+ * @description Fetch all proficiencies
+ * @access Protected required authentication
+ * 
+ * @returns {200 Okay} JSON array of all proficiencies from the database
+ * @returns {500 Internal Server Error} If there was an error fetching the proficiencies
+ */
 
 router.get("/fetchAll", async(req, res) =>{
     try{
