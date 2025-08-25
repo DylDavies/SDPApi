@@ -5,6 +5,7 @@ import { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
 import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
+import { ELeave } from "../models/enums/ELeave.enum";
 import { EUserType } from "../models/enums/EUserType.enum";
 
 /**
@@ -36,6 +37,36 @@ export class UserService implements IService {
             { upsert: true, new: true, runValidators: true }
         );
         return user;
+    }
+    /**
+     * @description
+     * This is the new method to add a leave request for a specific user.
+     * It finds the user by their ID and pushes a new leave object into their 'leave' array.
+     * @param userId The ID of the user submitting the request.
+     * @param leaveData The details of the leave request.
+     * @returns The updated user document with the new leave request, or null if the user isn't found.
+     */
+    public async addLeaveRequest(userId: string, leaveData: { reason: string, startDate: Date, endDate: Date }): Promise<IUser | null> {
+        if (!Types.ObjectId.isValid(userId)) {
+            this.logger.warn(`Invalid ID string provided to addLeaveRequest: "${userId}"`);
+            return null;
+        }
+
+        const { reason, startDate, endDate } = leaveData;
+
+        const newLeaveRequest = {
+            reason,
+            startDate,
+            endDate,
+            approved: ELeave.Pending 
+        };
+
+        // Find the user and push the new leave request into their 'leave' array.
+        return MUser.findByIdAndUpdate(
+            userId,
+            { $push: { leave: newLeaveRequest } },
+            { new: true, runValidators: true } // 'new: true' returns the modified document
+        );
     }
 
     /**

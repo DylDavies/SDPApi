@@ -1,5 +1,9 @@
+
 import { Schema, model, Document, Types } from 'mongoose';
 import { EUserType } from '../../models/enums/EUserType.enum';
+import { ILeave } from '../../models/interfaces/ILeave.interface';
+import { ELeave } from '../../models/enums/ELeave.enum';
+
 
 export interface IUser extends Document {
     _id: Types.ObjectId;
@@ -11,9 +15,17 @@ export interface IUser extends Document {
     createdAt: Date;
     type: EUserType;
     roles: Types.ObjectId[];
+    leave: ILeave [];
     pending: boolean;
     disabled: boolean;
 }
+const LeaveSchema = new Schema<ILeave>({
+    reason: { type: String, required: true, trim: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    approved: { type: String, enum: Object.values(ELeave), default: ELeave.Pending }
+}, { timestamps: true });
+
 
 const UserSchema = new Schema<IUser>({
     googleId: { type: String, required: true, unique: true },
@@ -26,6 +38,7 @@ const UserSchema = new Schema<IUser>({
         type: Schema.Types.ObjectId,
         ref: 'Role'
     }],
+    leave: [LeaveSchema],
     pending: {
         type: Boolean,
         required: true,
