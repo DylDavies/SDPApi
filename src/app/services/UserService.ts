@@ -5,7 +5,6 @@ import { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
 import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
-import { ILeave } from "../models/interfaces/ILeave.interface";
 import { ELeave } from "../models/enums/ELeave.enum";
 
 /**
