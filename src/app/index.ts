@@ -6,12 +6,14 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
+import http from 'http';
 
 import { LoggingService } from "./services/LoggingService";
 import { loggerMiddleware } from "./middleware/logger.middleware";
 import { attachUserMiddleware } from "./middleware/auth.middleware";
 import { ServiceManager } from "./services/ServiceManager";
 import { Singleton } from "./models/classes/Singleton";
+import SocketService from "./services/SocketService";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -48,8 +50,12 @@ async function main() {
         }
     }
 
+    const httpServer = http.createServer(app);
+
+    SocketService.init(httpServer);
+
     // --- Start Server ---
-    app.listen(port, () => {
+    httpServer.listen(port, () => {
         logger.info(`Listening on port ${port}`);
     });
 }
