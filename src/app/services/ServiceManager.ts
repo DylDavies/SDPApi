@@ -27,6 +27,7 @@ export class ServiceManager {
         const serviceFiles = fs.readdirSync(servicesDir).filter(file => 
             (file.endsWith('Service.js') || file.endsWith('Service.ts')) && 
             !file.startsWith('ServiceManager') &&
+            !file.startsWith('SocketManager') &&
             !file.endsWith('.d.ts') &&
             !file.endsWith('.map')
         );
