@@ -70,13 +70,13 @@ export class UserService implements IService {
     }
 
     /**
-     * @description
-     * Updates the status of a specific leave request for a user.
-     * @param userId The ID of the user.
-     * @param leaveId The ID of the leave request to update.
-     * @param status The new status (Approved or Denied).
-     * @returns The updated user document, or null if the user or leave request is not found.
-     */
+    *@description
+    *Updates the status of a specific leave request for a user.
+    *@param userId The ID of the user.
+    *@param leaveId The ID of the leave request to update.
+    *@param status The new status (Approved or Denied).
+    *@returns The updated user document, or null if the user or leave request is not found.
+    */
     public async updateLeaveRequestStatus(userId: string, leaveId: string, status: ELeave.Approved | ELeave.Denied): Promise<IUser | null> {
         if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(leaveId)) {
         this.logger.warn(`Invalid ID string provided to updateLeaveRequestStatus. User ID: "${userId}", Leave ID: "${leaveId}"`);
