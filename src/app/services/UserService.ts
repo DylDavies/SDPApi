@@ -7,6 +7,7 @@ import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { ELeave } from "../models/enums/ELeave.enum";
 import { EUserType } from "../models/enums/EUserType.enum";
+import { IProficiency } from "../db/models/MProficiencies.model";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -178,6 +179,45 @@ export class UserService implements IService {
         await MUser.updateOne({ _id: targetUserId }, { $set: { type } });
 
         return (await MUser.findById(targetUserId).populate('roles'))!;
+    }
+
+    /**
+     * Adds or updates the proficiencies of a given user
+     * @param userId userId of the user to be updated
+     * @param ProfData new proficiency data that will be added
+     * @returns the updated user document or null if user was not found or an error occured
+     */
+    public async addOrUpdateProficiency(userId: string, ProfData: IProficiency): Promise<IUser | null>{
+        if(!Types.ObjectId.isValid(userId)){
+            this.logger.warn(`Invalid ID provided to addOrUpdateProficiency: "${userId}"`);
+            return null;
+        }
+
+        try{
+            const user = await MUser.findById(userId);
+            if(!user){
+                this.logger.warn(`User with Id ${userId} was not found`);
+                return null;
+            }
+
+            const prof = user.proficiencies.find(p => p.name === ProfData.name); // get the prof with the name begin passed in 
+
+            if(prof){
+                prof.set(ProfData); // if prof exists then update it
+            }
+            else{
+                user.proficiencies.push(ProfData); // add a new prof to the array
+            }
+
+            const updatedUserData = await user.save();
+            this.logger.info(`User with Id ${userId} was updated successfully`);
+            
+            return updatedUserData;
+        }
+        catch(error){
+            this.logger.warn("Error when adding or updating the users proficiency: ", error);
+            return null;
+        }
     }
 }
 
