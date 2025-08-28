@@ -17,6 +17,28 @@ export class BundleService implements IService {
     }
 
     /**
+     * Retrieves all bundles from the database.
+     * @returns A promise that resolves to an array of all bundles.
+     */
+    public async getBundles(): Promise<IBundle[]> {
+        return MBundle.find().populate('student', 'displayName').populate('subjects.tutor', 'displayName').exec();
+    }
+
+    /**
+     * Updates an existing bundle with new data.
+     * @param bundleId The ID of the bundle to update.
+     * @param updateData An object containing the fields to update.
+     * @returns The updated bundle.
+     */
+    public async updateBundle(bundleId: string, updateData: Partial<IBundle>): Promise<IBundle | null> {
+        return MBundle.findByIdAndUpdate(
+            bundleId,
+            { $set: updateData },
+            { new: true }
+        );
+    }
+
+    /**
      * Creates a new bundle for a single student with an initial set of subjects.
      * @param studentId The user ID for the student in the bundle.
      * @param subjects An array of objects, each defining a subject, its tutor, and hours.

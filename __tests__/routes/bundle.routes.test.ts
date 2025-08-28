@@ -12,6 +12,7 @@ const mockBundleService = {
     removeSubjectFromBundle: jest.fn(),
     setBundleActiveStatus: jest.fn(),
     setBundleStatus: jest.fn(),
+    getBundles: jest.fn(), // Added mock for getBundles
 };
 
 jest.mock('../../src/app/models/classes/Singleton', () => ({
@@ -34,7 +35,7 @@ jest.mock('../../src/app/middleware/auth.middleware', () => ({
             email: 'test@tutor.com',
             displayName: 'Test User',
             firstLogin: false,
-            permissions: [EPermission.BUNDLES_CREATE, EPermission.BUNDLES_EDIT],
+            permissions: [EPermission.BUNDLES_CREATE, EPermission.BUNDLES_EDIT, EPermission.BUNDLES_VIEW], // Added BUNDLES_VIEW
             type: EUserType.Admin,
         };
         next();
@@ -60,6 +61,23 @@ describe('Bundle Routes', () => {
     
     beforeEach(() => {
         jest.clearAllMocks();
+    });
+
+    // --- Test Suite for GET /api/bundle ---
+    describe('GET /api/bundle', () => {
+        it('should return a list of bundles and a 200 status code', async () => {
+            const mockBundles = [
+                { _id: new Types.ObjectId().toHexString(), student: new Types.ObjectId().toHexString(), subjects: [] },
+                { _id: new Types.ObjectId().toHexString(), student: new Types.ObjectId().toHexString(), subjects: [] }
+            ];
+            mockBundleService.getBundles.mockResolvedValue(mockBundles);
+
+            const response = await request(app).get('/api/bundle');
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(mockBundles);
+            expect(mockBundleService.getBundles).toHaveBeenCalledTimes(1);
+        });
     });
 
     // --- Test Suite for POST /api/bundle ---

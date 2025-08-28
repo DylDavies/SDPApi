@@ -11,6 +11,16 @@ const bundleService = BundleService;
 // All bundle routes should require a user to be logged in.
 router.use(authenticationMiddleware);
 
+// GET /api/bundle - Get all bundles
+router.get("/", async (req, res) => {
+    try {
+        const bundles = await bundleService.getBundles();
+        res.status(200).json(bundles);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching bundles", error: (error as Error).message });
+    }
+});
+
 // POST /api/bundle - Create a new bundle
 router.post("/", async (req, res) => {
     try {
@@ -29,6 +39,25 @@ router.post("/", async (req, res) => {
         res.status(201).json(newBundle);
     } catch (error) {
         res.status(500).json({ message: "Error creating bundle", error: (error as Error).message });
+    }
+});
+
+// PATCH /api/bundle/:bundleId - Update a bundle
+router.patch("/:bundleId", async (req, res) => {
+    try {
+        const { bundleId } = req.params;
+        const updateData = req.body;
+
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
+        }
+        const updatedBundle = await bundleService.updateBundle(bundleId, updateData);
+        if (!updatedBundle) {
+            return res.status(404).send("Bundle not found.");
+        }
+        res.status(200).json(updatedBundle);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating bundle", error: (error as Error).message });
     }
 });
 
@@ -108,7 +137,7 @@ router.patch("/:bundleId/status/active", async (req, res) => {
     }
 });
 
-// PATCH /api/bundle/:bundleId/status - Update the status of a bundle
+// PATCH /api/bundle/:bundleId/status - Update the status of a bundle (e.g., 'pending', 'approved')
 router.patch("/:bundleId/status", async (req, res) => {
     try {
         const { bundleId } = req.params;
@@ -121,9 +150,9 @@ router.patch("/:bundleId/status", async (req, res) => {
             return res.status(400).send("Invalid bundle ID format.");
         }
 
-        // Updated validation for string-based enum
         const validStatuses = Object.values(EBundleStatus);
-        if (!validStatuses.includes(status as EBundleStatus)) {
+
+        if (!validStatuses.includes(status)) {
             return res.status(400).send(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
         }
 
