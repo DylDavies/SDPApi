@@ -108,7 +108,7 @@ router.patch("/:bundleId/status/active", async (req, res) => {
     }
 });
 
-// PATCH /api/bundle/:bundleId/status - Update the status of a bundle (0, 1, 2)
+// PATCH /api/bundle/:bundleId/status - Update the status of a bundle
 router.patch("/:bundleId/status", async (req, res) => {
     try {
         const { bundleId } = req.params;
@@ -121,14 +121,13 @@ router.patch("/:bundleId/status", async (req, res) => {
             return res.status(400).send("Invalid bundle ID format.");
         }
 
-        const statusAsNumber = Number(status);
-        const validStatuses = Object.values(EBundleStatus).filter(v => typeof v === 'number');
-
-        if (isNaN(statusAsNumber) || !validStatuses.includes(statusAsNumber)) {
+        // Updated validation for string-based enum
+        const validStatuses = Object.values(EBundleStatus);
+        if (!validStatuses.includes(status as EBundleStatus)) {
             return res.status(400).send(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
         }
 
-        const updatedBundle = await bundleService.setBundleStatus(bundleId, statusAsNumber);
+        const updatedBundle = await bundleService.setBundleStatus(bundleId, status);
         if (!updatedBundle) {
             return res.status(404).send("Bundle not found.");
         }

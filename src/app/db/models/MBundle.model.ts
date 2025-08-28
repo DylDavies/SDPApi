@@ -25,7 +25,7 @@ const BundleSubjectSchema = new Schema<IBundleSubject>({
     subject: { type: String, required: true, trim: true },
     tutor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     hours: { type: Number, required: true, min: 0 }
-}); // FIX: Removed `{ _id: false }`. Mongoose will now correctly assign an _id to each subject.
+});
 
 // Schema for the main bundle collection
 const BundleSchema = new Schema<IBundle>({
@@ -37,8 +37,8 @@ const BundleSchema = new Schema<IBundle>({
     subjects: [BundleSubjectSchema],
     isActive: { type: Boolean, default: true },
     status: {
-        type: Number,
-        enum: Object.values(EBundleStatus).filter(v => typeof v === 'number'),
+        type: String, 
+        enum: Object.values(EBundleStatus), 
         default: EBundleStatus.Pending
     },
     createdBy: {
