@@ -131,13 +131,13 @@ router.post("/:userId/leave", async (req, res) => {
 router.patch("/:userId/leave/:leaveId", async (req, res) => {
     try {
         const { userId, leaveId } = req.params;
-        const { status } = req.body;
+        const { approved } = req.body;
 
-        if (!status || (status !== ELeave.Approved && status !== ELeave.Denied)) {
+        if (!approved || (approved !== ELeave.Approved && approved !== ELeave.Denied)) {
             return res.status(400).send("A valid status ('Approved' or 'Denied') is required.");
         }
 
-        const updatedUser = await userService.updateLeaveRequestStatus(userId, leaveId, status);
+        const updatedUser = await userService.updateLeaveRequestStatus(userId, leaveId, approved);
         if (!updatedUser) {
             return res.status(404).json({ message: "User or leave request not found." });
         }
