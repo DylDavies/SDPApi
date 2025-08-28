@@ -1,10 +1,9 @@
 import { Router } from "express";
-import { hasPermission } from "../../middleware/permission.middleware";
-import { EPermission } from "../../models/enums/EPermission.enum";
 import BundleService from "../../services/BundleService";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { authenticationMiddleware } from "../../middleware/auth.middleware";
 import { EBundleStatus } from "../../models/enums/EBundleStatus.enum";
+import { Types } from "mongoose";
 
 const router = Router();
 const bundleService = BundleService;
@@ -13,13 +12,17 @@ const bundleService = BundleService;
 router.use(authenticationMiddleware);
 
 // POST /api/bundle - Create a new bundle
-router.post("/", /*hasPermission(EPermission.BUNDLES_CREATE),*/ async (req, res) => {
+router.post("/", async (req, res) => {
     try {
         const { student, subjects } = req.body;
-        const creator = req.user as IPayloadUser; // Get the logged-in user from the request
+        const creator = req.user as IPayloadUser;
 
         if (!student || !subjects || !Array.isArray(subjects)) {
             return res.status(400).send("Missing required fields: student, subjects");
+        }
+        
+        if (!Types.ObjectId.isValid(student)) {
+            return res.status(400).send("Invalid student ID format.");
         }
 
         const newBundle = await bundleService.createBundle(student, subjects, creator.id);
@@ -30,13 +33,22 @@ router.post("/", /*hasPermission(EPermission.BUNDLES_CREATE),*/ async (req, res)
 });
 
 // POST /api/bundle/:bundleId/subjects - Add a subject to a bundle
-router.post("/:bundleId/subjects", /*hasPermission(EPermission.BUNDLES_EDIT),*/ async (req, res) => {
+router.post("/:bundleId/subjects", async (req, res) => {
     try {
         const { bundleId } = req.params;
         const subject = req.body;
 
         if (!subject || !subject.subject || !subject.tutor || subject.hours === undefined) {
             return res.status(400).send("Missing required fields for subject: subject, tutor, hours");
+        }
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
+        }
+        if (!Types.ObjectId.isValid(subject.tutor)) {
+            return res.status(400).send("Invalid tutor ID format.");
+        }
+        if (typeof subject.hours !== 'number' || subject.hours <= 0) {
+            return res.status(400).send("Hours must be a positive number.");
         }
 
         const updatedBundle = await bundleService.addSubjectToBundle(bundleId, subject);
@@ -49,29 +61,41 @@ router.post("/:bundleId/subjects", /*hasPermission(EPermission.BUNDLES_EDIT),*/ 
     }
 });
 
-// DELETE /api/bundle/:bundleId/subjects/:subjectId - Remove a subject from a bundle
-router.delete("/:bundleId/subjects/:subjectId", /*hasPermission(EPermission.BUNDLES_EDIT),*/ async (req, res) => {
+// DELETE /api/bundle/:bundleId/subjects/:subjectName - Remove a subject from a bundle
+router.delete("/:bundleId/subjects/:subjectName", async (req, res) => {
     try {
-        const { bundleId, subjectId } = req.params;
-        const updatedBundle = await bundleService.removeSubjectFromBundle(bundleId, subjectId);
+        const { bundleId, subjectName } = req.params;
+        
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format provided.");
+        }
 
+        const updatedBundle = await bundleService.removeSubjectFromBundle(bundleId, subjectName);
+        
         if (!updatedBundle) {
             return res.status(404).send("Bundle not found.");
         }
         res.status(200).json(updatedBundle);
     } catch (error) {
-        res.status(500).json({ message: "Error removing subject from bundle", error: (error as Error).message });
+        if (error instanceof Error) {
+            return res.status(404).json({ message: "Error removing subject", error: error.message });
+        }
+        res.status(500).json({ message: "An unexpected error occurred." });
     }
 });
 
+
 // PATCH /api/bundle/:bundleId/status/active - Mark a bundle as active or inactive
-router.patch("/:bundleId/status/active", /*hasPermission(EPermission.BUNDLES_EDIT),*/ async (req, res) => {
+router.patch("/:bundleId/status/active", async (req, res) => {
     try {
         const { bundleId } = req.params;
         const { isActive } = req.body;
 
         if (typeof isActive !== 'boolean') {
             return res.status(400).send("Field 'isActive' must be a boolean.");
+        }
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
         }
 
         const updatedBundle = await bundleService.setBundleActiveStatus(bundleId, isActive);
@@ -84,17 +108,27 @@ router.patch("/:bundleId/status/active", /*hasPermission(EPermission.BUNDLES_EDI
     }
 });
 
-// PATCH /api/bundle/:bundleId/status - Update the status of a bundle (pending, approved, disapproved)
-router.patch("/:bundleId/status", /*hasPermission(EPermission.BUNDLES_EDIT),*/ async (req, res) => {
+// PATCH /api/bundle/:bundleId/status - Update the status of a bundle (0, 1, 2)
+router.patch("/:bundleId/status", async (req, res) => {
     try {
         const { bundleId } = req.params;
         const { status } = req.body;
 
-        if (!status || !Object.values(EBundleStatus).includes(status)) {
-            return res.status(400).send(`Invalid status. Must be one of: ${Object.values(EBundleStatus).join(", ")}`);
+        if (status === undefined || status === null) {
+             return res.status(400).send("Field 'status' is required.");
+        }
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
         }
 
-        const updatedBundle = await bundleService.setBundleStatus(bundleId, status);
+        const statusAsNumber = Number(status);
+        const validStatuses = Object.values(EBundleStatus).filter(v => typeof v === 'number');
+
+        if (isNaN(statusAsNumber) || !validStatuses.includes(statusAsNumber)) {
+            return res.status(400).send(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
+        }
+
+        const updatedBundle = await bundleService.setBundleStatus(bundleId, statusAsNumber);
         if (!updatedBundle) {
             return res.status(404).send("Bundle not found.");
         }

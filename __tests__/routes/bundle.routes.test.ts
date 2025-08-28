@@ -1,10 +1,11 @@
-import { Request, Response, NextFunction } from 'express';
+import request from 'supertest';
+import express, { Request, Response, NextFunction } from 'express';
 import { EPermission } from '../../src/app/models/enums/EPermission.enum';
-import IPayloadUser from '../../src/app/models/interfaces/IPayloadUser.interface';
 import { EUserType } from '../../src/app/models/enums/EUserType.enum';
 import { EBundleStatus } from '../../src/app/models/enums/EBundleStatus.enum';
+import { Types } from 'mongoose';
 
-// --- Mocking Services ---
+// --- Mock Services ---
 const mockBundleService = {
     createBundle: jest.fn(),
     addSubjectToBundle: jest.fn(),
@@ -13,155 +14,141 @@ const mockBundleService = {
     setBundleStatus: jest.fn(),
 };
 
-const mockLogger = {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-};
-
-// --- Mocking Singleton ---
 jest.mock('../../src/app/models/classes/Singleton', () => ({
     Singleton: {
         getInstance: jest.fn().mockImplementation((serviceClass: any) => {
             if (serviceClass.name === 'BundleService') {
                 return mockBundleService;
             }
-            if (serviceClass.name === 'LoggingService') {
-                return mockLogger;
-            }
             return {};
         })
     }
 }));
 
+// --- Mock Middleware ---
+jest.mock('../../src/app/middleware/auth.middleware', () => ({
+    authenticationMiddleware: jest.fn((req: Request, res: Response, next: NextFunction) => {
+        // Attach a mock user to the request for the handler to use
+        (req as any).user = {
+            id: new Types.ObjectId().toHexString(), // Use a valid ObjectId string for the user
+            email: 'test@tutor.com',
+            displayName: 'Test User',
+            firstLogin: false,
+            permissions: [EPermission.BUNDLES_CREATE, EPermission.BUNDLES_EDIT],
+            type: EUserType.Admin,
+        };
+        next();
+    })
+}));
+
+jest.mock('../../src/app/middleware/permission.middleware', () => ({
+    hasPermission: jest.fn(() => (req: Request, res: Response, next: NextFunction) => {
+        // For these tests, we assume the user always has permission.
+        next(); 
+    })
+}));
+
+// --- Setup Test App ---
+const app = express();
+app.use(express.json());
+
+const bundleRouter = require('../../src/app/routes/bundle/router').default;
+app.use('/api/bundle', bundleRouter);
+
 
 describe('Bundle Routes', () => {
-    let bundleRouter: any;
-    let mockRequest: Partial<Request & { user: IPayloadUser }>;
-    let mockResponse: Partial<Response>;
-    const nextFunction: NextFunction = jest.fn();
-    const mockUser: IPayloadUser = { // A mock user to be attached to requests
-        id: 'user-abc-123',
-        email: 'test@tutor.com',
-        displayName: 'Test User',
-        firstLogin: false,
-        permissions: [EPermission.BUNDLES_CREATE, EPermission.BUNDLES_EDIT],
-        type: EUserType.Admin,
-    };
-
+    
     beforeEach(() => {
-        jest.resetModules();
         jest.clearAllMocks();
-
-        bundleRouter = require('../../src/app/routes/bundle/router').default;
-
-        mockRequest = {
-            headers: {},
-            user: mockUser,
-        };
-        mockResponse = {
-            status: jest.fn().mockReturnThis(),
-            send: jest.fn(),
-            json: jest.fn(),
-        };
     });
 
-    // A helper to safely find the route handler
-    const findHandler = (path: string, method: 'post' | 'patch' | 'delete') => {
-        const layer = bundleRouter.stack.find((l: any) => 
-            l.route && l.route.path === path && l.route.methods[method]
-        );
-        if (!layer) {
-            throw new Error(`Could not find handler for ${method.toUpperCase()} ${path}`);
-        }
-        // The first handler is hasPermission, the second is our async function
-        return layer.route.stack[1].handle; 
-    };
-
     // --- Test Suite for POST /api/bundle ---
-    describe('POST /', () => {
+    describe('POST /api/bundle', () => {
         const bundleData = {
-            student: 'student-id-456',
-            subjects: [{ subject: 'Math', tutor: 'tutor-id-789', hours: 10 }],
+            // Use valid ObjectId strings for IDs
+            student: new Types.ObjectId().toHexString(),
+            subjects: [{ subject: 'Math', tutor: new Types.ObjectId().toHexString(), hours: 10 }],
         };
 
         it('should create a bundle and return 201', async () => {
-            mockRequest.body = bundleData;
             mockBundleService.createBundle.mockResolvedValue({ ...bundleData, _id: 'new-bundle-id' });
 
-            const handler = findHandler('/', 'post');
-            await handler(mockRequest as Request, mockResponse as Response, nextFunction);
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(bundleData);
 
-            expect(mockBundleService.createBundle).toHaveBeenCalledWith(bundleData.student, bundleData.subjects, mockUser.id);
-            expect(mockResponse.status).toHaveBeenCalledWith(201);
-            expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({ _id: 'new-bundle-id' }));
+            expect(response.status).toBe(201);
+            expect(response.body).toEqual(expect.objectContaining({ _id: 'new-bundle-id' }));
+            // We get the creator ID from the mocked middleware
+            expect(mockBundleService.createBundle).toHaveBeenCalledWith(bundleData.student, bundleData.subjects, expect.any(String));
         });
 
         it('should return 400 if student is missing', async () => {
-            mockRequest.body = { subjects: bundleData.subjects }; // Missing student
-            
-            const handler = findHandler('/', 'post');
-            await handler(mockRequest as Request, mockResponse as Response, nextFunction);
+            // eslint-disable-next-line
+            const { student, ...incompleteData } = bundleData;
 
-            expect(mockResponse.status).toHaveBeenCalledWith(400);
-            expect(mockResponse.send).toHaveBeenCalledWith('Missing required fields: student, subjects');
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(incompleteData);
+
+            expect(response.status).toBe(400);
+            expect(response.text).toBe('Missing required fields: student, subjects');
         });
     });
 
     // --- Test Suite for POST /api/bundle/:bundleId/subjects ---
-    describe('POST /:bundleId/subjects', () => {
-        const subjectData = { subject: 'Science', tutor: 'tutor-id-123', hours: 5 };
+    describe('POST /api/bundle/:bundleId/subjects', () => {
+        // Use valid ObjectId strings for IDs
+        const subjectData = { subject: 'Science', tutor: new Types.ObjectId().toHexString(), hours: 5 };
+        const bundleId = new Types.ObjectId().toHexString();
 
         it('should add a subject and return 200', async () => {
-            mockRequest.params = { bundleId: 'bundle-xyz' };
-            mockRequest.body = subjectData;
-            mockBundleService.addSubjectToBundle.mockResolvedValue({ _id: 'bundle-xyz', subjects: [subjectData] });
+            mockBundleService.addSubjectToBundle.mockResolvedValue({ _id: bundleId, subjects: [subjectData] });
 
-            const handler = findHandler('/:bundleId/subjects', 'post');
-            await handler(mockRequest as Request, mockResponse as Response, nextFunction);
+            const response = await request(app)
+                .post(`/api/bundle/${bundleId}/subjects`)
+                .send(subjectData);
 
-            expect(mockBundleService.addSubjectToBundle).toHaveBeenCalledWith('bundle-xyz', subjectData);
-            expect(mockResponse.status).toHaveBeenCalledWith(200);
-            expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({ subjects: [subjectData] }));
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(expect.objectContaining({ subjects: [subjectData] }));
+            expect(mockBundleService.addSubjectToBundle).toHaveBeenCalledWith(bundleId, subjectData);
         });
 
         it('should return 404 if bundle is not found', async () => {
-            mockRequest.params = { bundleId: 'non-existent-bundle' };
-            mockRequest.body = subjectData;
-            mockBundleService.addSubjectToBundle.mockResolvedValue(null); // Simulate not found
+            mockBundleService.addSubjectToBundle.mockResolvedValue(null);
 
-            const handler = findHandler('/:bundleId/subjects', 'post');
-            await handler(mockRequest as Request, mockResponse as Response, nextFunction);
+            const response = await request(app)
+                .post(`/api/bundle/${new Types.ObjectId().toHexString()}/subjects`)
+                .send(subjectData);
 
-            expect(mockResponse.status).toHaveBeenCalledWith(404);
-            expect(mockResponse.send).toHaveBeenCalledWith('Bundle not found.');
+            expect(response.status).toBe(404);
+            expect(response.text).toBe('Bundle not found.');
         });
     });
     
     // --- Test Suite for PATCH /api/bundle/:bundleId/status ---
-    describe('PATCH /:bundleId/status', () => {
+    describe('PATCH /api/bundle/:bundleId/status', () => {
+        const bundleId = new Types.ObjectId().toHexString();
+
         it('should update bundle status and return 200', async () => {
-            mockRequest.params = { bundleId: 'bundle-xyz' };
-            mockRequest.body = { status: EBundleStatus.Approved };
-            mockBundleService.setBundleStatus.mockResolvedValue({ _id: 'bundle-xyz', status: EBundleStatus.Approved });
+            mockBundleService.setBundleStatus.mockResolvedValue({ _id: bundleId, status: EBundleStatus.Approved });
 
-            const handler = findHandler('/:bundleId/status', 'patch');
-            await handler(mockRequest as Request, mockResponse as Response, nextFunction);
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}/status`)
+                .send({ status: EBundleStatus.Approved });
 
-            expect(mockBundleService.setBundleStatus).toHaveBeenCalledWith('bundle-xyz', EBundleStatus.Approved);
-            expect(mockResponse.status).toHaveBeenCalledWith(200);
-            expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({ status: EBundleStatus.Approved }));
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(expect.objectContaining({ status: EBundleStatus.Approved }));
+            expect(mockBundleService.setBundleStatus).toHaveBeenCalledWith(bundleId, EBundleStatus.Approved);
         });
 
         it('should return 400 for an invalid status', async () => {
-            mockRequest.params = { bundleId: 'bundle-xyz' };
-            mockRequest.body = { status: 'invalid-status' }; // Invalid status
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}/status`)
+                .send({ status: 'invalid-status' });
 
-            const handler = findHandler('/:bundleId/status', 'patch');
-            await handler(mockRequest as Request, mockResponse as Response, nextFunction);
-
-            expect(mockResponse.status).toHaveBeenCalledWith(400);
-            expect(mockResponse.send).toHaveBeenCalledWith(expect.stringContaining('Invalid status'));
+            expect(response.status).toBe(400);
+            expect(response.text).toContain('Invalid status');
         });
     });
 });

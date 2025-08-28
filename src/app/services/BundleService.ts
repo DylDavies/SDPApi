@@ -52,17 +52,30 @@ export class BundleService implements IService {
     }
 
     /**
-     * Removes a subject from a bundle.
+     * Removes a subject from a bundle by its name.
      * @param bundleId The ID of the bundle to update.
-     * @param subjectId The ID of the subject to remove from the sub-document array.
-     * @returns The updated bundle.
+     * @param subjectName The name of the subject to remove (e.g., "Math").
+     * @returns The updated bundle, or null if the bundle was not found. Throws an error if the subject is not found.
      */
-    public async removeSubjectFromBundle(bundleId: string, subjectId: string): Promise<IBundle | null> {
-        return MBundle.findByIdAndUpdate(
-            bundleId,
-            { $pull: { subjects: { _id: subjectId } } },
-            { new: true }
-        );
+    
+    public async removeSubjectFromBundle(bundleId: string, subjectName: string): Promise<IBundle | null> {
+       
+        const bundle = await MBundle.findById(bundleId);
+        if (!bundle) {
+            return null; 
+        }
+
+        
+        const subjectExists = bundle.subjects.some(s => s.subject === subjectName);
+        if (!subjectExists) {
+           
+            throw new Error(`Subject "${subjectName}" not found in this bundle.`);
+        }
+
+       
+        bundle.subjects = bundle.subjects.filter(s => s.subject !== subjectName);
+        await bundle.save();
+        return bundle;
     }
 
     /**
