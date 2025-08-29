@@ -1,22 +1,60 @@
-import { ObjectId } from "mongodb";
-import { IModelConfig } from "../../models/interfaces/IModelConfig.interface";
-import { EUserRole } from "../../models/enums/EUserRole.enum";
 
-const config: IModelConfig = {
-    collectionName: "users"
+import { Schema, model, Document, Types } from 'mongoose';
+import { EUserType } from '../../models/enums/EUserType.enum';
+import { ILeave } from '../../models/interfaces/ILeave.interface';
+import { ELeave } from '../../models/enums/ELeave.enum';
+import MProficiencies, { IProficiency } from './MProficiencies.model';
+
+
+export interface IUser extends Document {
+    _id: Types.ObjectId;
+    googleId: string;
+    email: string;
+    displayName: string;
+    picture?: string;
+    firstLogin: boolean;
+    createdAt: Date;
+    type: EUserType;
+    roles: Types.ObjectId[];
+    leave: ILeave [];
+    pending: boolean;
+    disabled: boolean;
+    proficiencies: IProficiency[];
 }
+const LeaveSchema = new Schema<ILeave>({
+    reason: { type: String, required: true, trim: true },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
+    approved: { type: String, enum: Object.values(ELeave), default: ELeave.Pending }
+}, { timestamps: true });
 
-export { config };
+const ProficiencySchema = MProficiencies.schema;
 
-export default class MUser {
-    constructor(
-        public sub: string,
-        public email: string,
-        public picture: string = "",
-        public displayName: string = "default",
-        public role: EUserRole = EUserRole.User,
-        public createdAt: Date = new Date(),
-        public firstLogin: boolean = true,
-        public _id?: ObjectId
-    ) {}
-}
+const UserSchema = new Schema<IUser>({
+    googleId: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true, trim: true },
+    displayName: { type: String, required: true, trim: true },
+    picture: { type: String },
+    firstLogin: { type: Boolean, default: true },
+    type: { type: String, values: Object.values(EUserType), required: true, default: EUserType.Client },
+    roles: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Role'
+    }],
+    leave: [LeaveSchema],
+    pending: {
+        type: Boolean,
+        required: true,
+        default: true
+    },
+    disabled: {
+        type: Boolean,
+        required: true,
+        default: false
+    },
+    proficiencies: [ProficiencySchema]
+}, { timestamps: true });
+
+const MUser = model<IUser>('User', UserSchema);
+
+export default MUser;

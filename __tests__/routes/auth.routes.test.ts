@@ -98,7 +98,11 @@ describe('Auth Routes - /callback', () => {
         } as any);
         mockUserService.addOrUpdateUser.mockResolvedValue({
             _id: { toHexString: () => 'mongo-id-123' }, 
-            email: 'test@example.com', name: 'Test User', role: 'user' 
+            populate: jest.fn().mockResolvedValue({
+                _id: { toHexString: () => 'mongo-id-123' }, 
+                email: 'test@example.com', name: 'Test User', role: 'user',
+                roles: [{permissions: ["fake-permissions"]}]
+            })
         })
         mockedJwt.sign.mockImplementation(() => 'fake-jwt-token');
 

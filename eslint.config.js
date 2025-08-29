@@ -50,6 +50,15 @@ export default tseslint.config(
     }
   },
 
+  // --- OVERRIDE: For Seed and script files ---
+  {
+    files: ['**/db/seed.ts', '**/scripts/generate-key.ts'],
+    rules: {
+      'no-console': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    }
+  },
+
   {
     ignores: [
       'node_modules', 
