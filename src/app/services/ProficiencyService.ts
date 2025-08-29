@@ -1,15 +1,12 @@
-import { ExecutableResponse } from "google-auth-library/build/src/auth/executable-response";
 import MProficiencies, { IProficiencyDocument } from "../db/models/MProficiencies.model";
 import { Singleton } from "../models/classes/Singleton";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { IService } from "../models/interfaces/IService.interface";
-import { LoggingService } from "./LoggingService";
 import ISubject from "../models/interfaces/ISubject.interface";
 import { IProficiency } from "../models/interfaces/IProficiency.interface";
 
 export class ProficiencyService implements IService {    
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
-    private logger = Singleton.getInstance(LoggingService);
 
     public async init(): Promise<void>{
         return Promise.resolve();
