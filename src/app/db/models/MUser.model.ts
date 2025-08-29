@@ -4,6 +4,7 @@ import { EUserType } from '../../models/enums/EUserType.enum';
 import { ILeave } from '../../models/interfaces/ILeave.interface';
 import { ELeave } from '../../models/enums/ELeave.enum';
 import MProficiencies, { IProficiencyDocument } from './MProficiencies.model';
+import { Theme } from '../../models/types/theme.type';
 
 
 export interface IUser extends Document {
@@ -20,6 +21,7 @@ export interface IUser extends Document {
     pending: boolean;
     disabled: boolean;
     proficiencies: IProficiencyDocument[];
+    theme: Theme;
 }
 const LeaveSchema = new Schema<ILeave>({
     reason: { type: String, required: true, trim: true },
@@ -52,7 +54,12 @@ const UserSchema = new Schema<IUser>({
         required: true,
         default: false
     },
-    proficiencies: [ProficiencySchemaUser]
+    proficiencies: [ProficiencySchemaUser],
+    theme: {
+        type: String,
+        enum: ['light', 'dark', 'system'],
+        default: 'system'
+    }
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);
