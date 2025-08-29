@@ -10,7 +10,7 @@ const SubjectSchema = new Schema<ISubject>({
 export interface IProficiencyDocument extends IProficiency, Document {}
 
 const ProficiencySchema = new Schema<IProficiencyDocument>({
-    name: { type: String, required: true, unique: true},
+    name: { type: String, required: true },
     subjects: {
         type: Map,
         of: SubjectSchema,
