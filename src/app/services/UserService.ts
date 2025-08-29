@@ -235,10 +235,23 @@ export class UserService implements IService {
     }
 
 
+    /**
+     * Deletes a proficiency from a user.
+     * @param userId The ID of the user.
+     * @param profName The name of the proficiency to remove.
+     * @returns The updated user document or null if not found.
+     */
      public async deleteProficiency(userId: string, profName: string): Promise<IUser | null>{
         return MUser.findByIdAndUpdate(userId, { $pull: { proficiencies: { name: profName } }}, { new: true }).populate('roles');
     }
 
+    /**
+     * Deletes a subject from a user's proficiency.
+     * @param userId The ID of the user.
+     * @param profName The name of the proficiency.
+     * @param subjectKey The key of the subject to remove.
+     * @returns The updated user document or null if not found.
+     */
     public async deleteSubject(userId: string, profName: string, subjectKey: string): Promise<IUser | null>{
         const user = await MUser.findById(userId);
         if (!user) return null;

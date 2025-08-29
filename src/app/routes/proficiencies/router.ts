@@ -31,7 +31,7 @@ router.post("/", async(req, res) =>{
 });
 
 // GET /api/proficiencies - Fetch all proficiencies
-router.get("/", async(req, res) =>{
+router.get("/fetchAll", async(req, res) =>{
     try{
         const profs = await proficiencyService.getProficiencies();
         return res.status(200).json(profs);
