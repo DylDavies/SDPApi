@@ -1,16 +1,23 @@
 import { Schema, model, Document } from "mongoose";
 import ISubject from "../../models/interfaces/ISubject.interface";
+import { IProficiency } from "../../models/interfaces/IProficiency.interface";
 
-export interface IProficiency extends Document{
-    name: string;
-    subjects: ISubject;
-}
+const SubjectSchema = new Schema<ISubject>({
+    name: { type: String, required: true },
+    grades: {type: [String], required: true, default: [] },
+}, {_id: true});
 
-const ProficiencySchema = new Schema<IProficiency>({
-    name: { type: String, required: true, unique: true },
-    subjects: { type: Object, required: true }
+export interface IProficiencyDocument extends IProficiency, Document {}
+
+const ProficiencySchema = new Schema<IProficiencyDocument>({
+    name: { type: String, required: true, unique: true},
+    subjects: {
+        type: Map,
+        of: SubjectSchema,
+        required: true
+    }
 });
 
-const MProficiencies = model<IProficiency>("Proficiencies", ProficiencySchema);
+const MProficiencies = model<IProficiencyDocument>("Proficiencies", ProficiencySchema);
 
 export default MProficiencies;
