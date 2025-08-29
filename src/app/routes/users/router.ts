@@ -2,7 +2,6 @@ import { Router } from "express";
 import { hasPermission } from "../../middleware/permission.middleware";
 import { EPermission } from "../../models/enums/EPermission.enum";
 import UserService from "../../services/UserService";
-import MUser from "../../db/models/MUser.model";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { EUserType } from "../../models/enums/EUserType.enum";
 import { IProficiency } from "../../models/interfaces/IProficiency.interface";
@@ -14,7 +13,7 @@ const userService = UserService;
 router.get("/", hasPermission(EPermission.USERS_VIEW), async (req, res) => {
     try {
         // Populate roles to show role names in the UI
-        const users = await MUser.find().populate('roles');
+        const users = await userService.getAllUsers();
         res.status(200).json(users);
     } catch (error) {
         res.status(500).json({ message: "Error fetching users", error: (error as Error).message });

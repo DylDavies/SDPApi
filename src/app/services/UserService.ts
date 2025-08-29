@@ -264,6 +264,10 @@ export class UserService implements IService {
         }
         return user.populate('roles');
     }
+
+    public async getAllUsers() {
+        return await MUser.find().populate(['roles', 'proficiencies']);
+    }
 }
 
 export default Singleton.getInstance(UserService);
