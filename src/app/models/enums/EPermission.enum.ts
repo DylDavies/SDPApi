@@ -15,6 +15,7 @@ export enum EPermission {
     USERS_MANAGE_ROLES = 'users:manage_roles', // Assign/remove roles from users
     USERS_EDIT = 'users:edit',
     USERS_DELETE = 'users:delete',
+    VIEW_USER_PROFILE = 'users:view_profile',
 
     // Page/Feature Access Permissions
     DASHBOARD_VIEW = 'dashboard:view',
