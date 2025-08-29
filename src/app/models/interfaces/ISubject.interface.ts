@@ -1,8 +1,7 @@
-import { ObjectId } from "mongodb";
-import IGrade from "./IGrade.interface";
+import { Types } from "mongoose";
 
 export default interface ISubject{
+    _id?:Types.ObjectId;
     name: string;
-    grades: IGrade[];
-    _id: ObjectId; // optional Id
+    grades: string[];
 }

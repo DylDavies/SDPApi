@@ -3,7 +3,7 @@ import { Schema, model, Document, Types } from 'mongoose';
 import { EUserType } from '../../models/enums/EUserType.enum';
 import { ILeave } from '../../models/interfaces/ILeave.interface';
 import { ELeave } from '../../models/enums/ELeave.enum';
-import MProficiencies, { IProficiency } from './MProficiencies.model';
+import MProficiencies, { IProficiencyDocument } from './MProficiencies.model';
 
 
 export interface IUser extends Document {
@@ -19,7 +19,7 @@ export interface IUser extends Document {
     leave: ILeave [];
     pending: boolean;
     disabled: boolean;
-    proficiencies: IProficiency[];
+    proficiencies: IProficiencyDocument[];
 }
 const LeaveSchema = new Schema<ILeave>({
     reason: { type: String, required: true, trim: true },
@@ -28,7 +28,7 @@ const LeaveSchema = new Schema<ILeave>({
     approved: { type: String, enum: Object.values(ELeave), default: ELeave.Pending }
 }, { timestamps: true });
 
-const ProficiencySchema = MProficiencies.schema;
+const ProficiencySchemaUser = MProficiencies.schema;
 
 const UserSchema = new Schema<IUser>({
     googleId: { type: String, required: true, unique: true },
@@ -52,7 +52,7 @@ const UserSchema = new Schema<IUser>({
         required: true,
         default: false
     },
-    proficiencies: [ProficiencySchema]
+    proficiencies: [ProficiencySchemaUser]
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);

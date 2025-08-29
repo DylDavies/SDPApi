@@ -4,7 +4,7 @@ import { EPermission } from "../../models/enums/EPermission.enum";
 import UserService from "../../services/UserService";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { EUserType } from "../../models/enums/EUserType.enum";
-import { IProficiency } from "../../db/models/MProficiencies.model";
+import { IProficiency } from "../../models/interfaces/IProficiency.interface";
 
 const router = Router();
 const userService = UserService;
@@ -146,14 +146,14 @@ router.patch("/:userId/leave/:leaveId", async (req, res) => {
     }
 });
 
-// POST /api/users/proficiencies - Add or update a user's proficiencies
+// POST /api/users/:userId/proficiencies - Add or update proficiencies for a user
 router.post("/:userId/proficiencies", async(req, res) =>{
     try{
         const { userId } = req.params;
         const proficiencyData: IProficiency = req.body;
 
-        if(!proficiencyData || Object.keys(proficiencyData).length === 0){
-            return res.status(400).send("Proficiency data not provided.");
+        if(!proficiencyData || !proficiencyData.name || !proficiencyData.subjects){
+            return res.status(400).send("Proficiency data with name and subjects is required.");
         }
 
         const updatedUser = await userService.addOrUpdateProficiency(userId, proficiencyData);
@@ -166,6 +166,40 @@ router.post("/:userId/proficiencies", async(req, res) =>{
     } 
     catch (error) {
         res.status(500).json({ message: "Error updating user proficiencies", error: (error as Error).message });
+    }
+});
+
+// DELETE /api/users/:userId/proficiencies/:profName - Delete a proficiency from a user's profile
+router.delete("/:userId/proficiencies/:profName", async (req, res) =>{
+    try{
+        const { userId, profName } = req.params;
+        const updatedUser = await userService.deleteProficiency(userId, profName);
+        
+        if(!updatedUser){
+            return res.status(404).send("User not found or deletion failed.");
+        }
+
+        return res.status(200).json(updatedUser);
+    } 
+    catch (error){
+        res.status(500).json({ message: "Error deleting proficiency from user", error: (error as Error).message });
+    }
+});
+
+// DELETE /api/users/:userId/proficiencies/:profName/subjects/:subjectKey - Delete a subject from a user's proficiency
+router.delete("/:userId/proficiencies/:profName/subjects/:subjectKey", async (req, res) =>{
+    try{
+        const { userId, profName, subjectKey } = req.params;
+        const updatedUser = await userService.deleteSubject(userId, profName, subjectKey);
+        
+        if(!updatedUser){
+            return res.status(404).send("User not found or subject deletion failed.");
+        }
+
+        return res.status(200).json(updatedUser);
+    } 
+    catch (error){
+        res.status(500).json({ message: "Error deleting subject from user", error: (error as Error).message });
     }
 });
 
