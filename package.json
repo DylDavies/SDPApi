@@ -6,7 +6,7 @@
     "dev": "npm run build && npm run serve",
     "start": "tsc && npm run serve",
     "build": "rm -rf ./dist && tsc",
-    "serve": "node dist/index.js",
+    "serve": "node dist/app/index.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "docs": "typedoc",
@@ -19,6 +19,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
