@@ -1,8 +1,11 @@
-import MProficiencies, { IProficiency } from "../db/models/MProficiencies.model";
+import { ExecutableResponse } from "google-auth-library/build/src/auth/executable-response";
+import MProficiencies, { IProficiencyDocument } from "../db/models/MProficiencies.model";
 import { Singleton } from "../models/classes/Singleton";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { IService } from "../models/interfaces/IService.interface";
 import { LoggingService } from "./LoggingService";
+import ISubject from "../models/interfaces/ISubject.interface";
+import { IProficiency } from "../models/interfaces/IProficiency.interface";
 
 export class ProficiencyService implements IService {    
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -18,48 +21,48 @@ export class ProficiencyService implements IService {
      * @param prof The proficiency to add or update.
      * @returns The added or updated proficiency, or null if there was an error.
      */
-    public async addOrUpdateProficiency(prof: IProficiency): Promise<IProficiency | null>{
-        try{
-            const result =  await MProficiencies.findOneAndUpdate(
-                { name: prof.name },
-                {
-                    $set: {
-                        subjects: prof.subjects,
-                    },
-                    $setOnInsert: {
-                        name: prof.name
-                    }
-                },
-                {
-                    upsert: true,
-                    new: true,
-                    runValidators: true
-                }
-            );
-            this.logger.info(`Proficiency added or updated: ${prof.name}`);
-            return result;
+    public async addOrUpdateProficiency(profData: IProficiency): Promise<IProficiencyDocument>{
+        const prof = await MProficiencies.findOne({ name: profData.name });
+
+        if(prof){
+            profData.subjects.forEach((value: ISubject, key: string) => {
+                prof.subjects.set(key, value);
+            });
+            return prof.save();
         }
-        catch(error){
-            this.logger.error("Error when adding or updating proficiency: ",error);
-            return null;
-        }     
+        else{
+            const newProf = new MProficiencies(profData);
+            return newProf.save();
+        }
     }
 
-    /**
-     * Fetch all proficiencies from the database
-     * @returns {Promise<IProficiency[] | null>} Array of proficiencies, or null if fetching fails.
-     */
+    public async updateProficiencyName(profId: string, newName: string): Promise<IProficiencyDocument | null>{
+        return MProficiencies.findByIdAndUpdate(profId, { $set: { name: newName } }, { new: true });
+    }
 
-    public async getProficiences():Promise<IProficiency[] | null>{
-        let profs;
-        try{
-            profs = await MProficiencies.find()
-        }
-        catch(error){
-            this.logger.error("Error when fetching proficiencies: ", error);
-            return null;
-        }
-        return profs;
+    public async deleteProficiency(profId: string): Promise<{ deletedCount: number }> {
+        const result = await MProficiencies.deleteOne({ _id: profId });
+        return result;
+    }
+
+    public async addOrUpdateSubject(profId: string, subjectKey: string, subjectData: ISubject): Promise<IProficiencyDocument | null>{
+        return MProficiencies.findByIdAndUpdate(
+            profId,
+            { $set: { [`subjects.${subjectKey}`]: subjectData } },
+            { new: true }
+        );
+    }
+
+    public async deleteSubject(profId: string, subjectKey: string): Promise<IProficiencyDocument | null>{
+        return MProficiencies.findByIdAndUpdate(
+            profId,
+            { $unset: { [`subjects.${subjectKey}`]: "" } },
+            { new: true }
+        );
+    }
+
+    public async getProficiencies(): Promise<IProficiencyDocument[]>{
+        return MProficiencies.find();
     }
 }
 
