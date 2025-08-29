@@ -122,7 +122,7 @@ describe('External Staff API', () => {
     it('should return 200 and a list of proficiencies with a valid API key', async () => {
       // Arrange
       const mockProfs = [{ _id: 'p1', name: 'Calculus' }, { _id: 'p2', name: 'Physics' }];
-      (MockProficiencyService.getProficiences as jest.Mock).mockResolvedValue(mockProfs);
+      (MockProficiencyService.getProficiencies as jest.Mock).mockResolvedValue(mockProfs);
 
       // Act
       const response = await request(app)

@@ -43,7 +43,7 @@ router.get('/tutors', keyAuth, async (req, res) => {
 router.get('/proficiencies', keyAuth, async (req, res) => {
   try {
     // Fetch all proficiencies from your database
-    const allProfs = await ProficiencyService.getProficiences();
+    const allProfs = await ProficiencyService.getProficiencies();
 
     res.json(allProfs);
   } catch (error) {
