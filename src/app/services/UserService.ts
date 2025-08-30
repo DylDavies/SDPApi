@@ -254,7 +254,7 @@ export class UserService implements IService {
         return MUser.findByIdAndUpdate(userId, { $pull: { proficiencies: { name: profName } }}, { new: true }).populate('roles');
     }
 
-/**
+    /**
      * Deletes a subject from a user's proficiency by its ID.
      * @param userId The ID of the user.
      * @param profName The name of the proficiency.
@@ -273,7 +273,7 @@ export class UserService implements IService {
         if (proficiencyToUpdate) {
             const subjectsAsArray = Array.from(proficiencyToUpdate.subjects.entries());
 
-            const filteredSubjects = subjectsAsArray.filter(([key, subject]) => {
+            const filteredSubjects = subjectsAsArray.filter(([_key, subject]) => {
                 return subject._id?.toString() !== subjectId;
             });
 
