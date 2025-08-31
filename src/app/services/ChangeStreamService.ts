@@ -19,8 +19,10 @@ export class ChangeStreamService implements IService {
     public async init(): Promise<void> {
         try {
             MUser.watch().on('change', (change) => {
-                this.logger.info(`Change detected in 'users' collection: ${change.operationType}`);
-                this.socketService.broadcast(ESocketMessage.UsersUpdated, { change });
+                if (!change.updateDescription.updatedFields.theme) {
+                    this.logger.info(`Change detected in 'users' collection: ${change.operationType}`);
+                    this.socketService.broadcast(ESocketMessage.UsersUpdated, { change });
+                }
             });
 
             MRole.watch().on('change', (change) => {
