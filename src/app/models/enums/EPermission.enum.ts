@@ -27,4 +27,7 @@ export enum EPermission {
     BUNDLES_VIEW = 'bundles:view',
     BUNDLES_EDIT = 'bundles:edit',
     BUNDLES_DELETE = 'bundles:delete',
+
+    // Proficiency Management Permissions
+    PROFICIENCIES_MANAGE = 'proficiencies:manage'
 }
