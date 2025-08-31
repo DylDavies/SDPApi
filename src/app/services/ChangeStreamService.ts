@@ -6,6 +6,7 @@ import MRole from '../db/models/MRole.model';
 import SocketService from './SocketService';
 import { EServiceLoadPriority } from '../models/enums/EServiceLoadPriority.enum';
 import { ESocketMessage } from '../models/enums/ESocketMessage.enum';
+import MProficiencies from '../db/models/MProficiencies.model';
 
 /**
  * Listens to MongoDB change streams and broadcasts events via the SocketService.
@@ -26,6 +27,11 @@ export class ChangeStreamService implements IService {
                 this.logger.info(`Change detected in 'roles' collection: ${change.operationType}`);
                 this.socketService.broadcast(ESocketMessage.RolesUpdated, { change });
             });
+
+            MProficiencies.watch().on('change', (change) =>{
+                this.logger.info(`Change detected in 'proficiencies' collection: ${ change }`);
+                this.socketService.broadcast(ESocketMessage.ProficienciesUpdated, { change});
+            })
 
             this.logger.info('Now watching database collections for changes...');
         } catch (error) {
