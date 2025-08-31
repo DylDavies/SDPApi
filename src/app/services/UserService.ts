@@ -10,6 +10,7 @@ import { EUserType } from "../models/enums/EUserType.enum";
 import { IProficiencyDocument } from "../db/models/MProficiencies.model";
 import { IProficiency } from "../models/interfaces/IProficiency.interface";
 import ISubject from "../models/interfaces/ISubject.interface";
+import { Theme } from "../models/types/theme.type";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -289,6 +290,10 @@ export class UserService implements IService {
 
     public async getAllUsers() {
         return await MUser.find().populate(['roles', 'proficiencies']);
+    }
+
+    public async updateUserPreferences(userId: string, preferences: { theme: Theme }) {
+        await MUser.findByIdAndUpdate(userId, { $set: { theme: preferences.theme } });
     }
 }
 

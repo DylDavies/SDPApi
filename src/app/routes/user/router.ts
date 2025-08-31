@@ -53,9 +53,28 @@ router.patch('/', async (req,res) => {
         
     } catch(error){
         logger.error(`Error updating user.`, error);
-        return res.status(500).send('Internal Server Error' );
+        return res.status(500).send('Internal Server Error');
     }
 })
+
+router.patch('/preferences', async (req, res) => {
+    try {
+        const userId = req.user!.id;
+        const { theme } = req.body;
+
+        // Validate the theme input
+        if (!['light', 'dark', 'system'].includes(theme)) {
+            return res.status(400).send('Invalid theme value.');
+        }
+
+        userService.updateUserPreferences(userId, {theme});
+
+        res.status(200).json({ message: 'Preferences updated successfully.' });
+    } catch (error) {
+        logger.error(`Error updating user preferences.`, error);
+        return res.status(500).send('Internal Server Error' );
+    }
+});
 
 export default router;
 
