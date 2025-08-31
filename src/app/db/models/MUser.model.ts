@@ -22,6 +22,7 @@ export interface IUser extends Document {
     disabled: boolean;
     proficiencies: IProficiencyDocument[];
     theme: Theme;
+    availability?: number;
 }
 const LeaveSchema = new Schema<ILeave>({
     reason: { type: String, required: true, trim: true },
@@ -59,6 +60,10 @@ const UserSchema = new Schema<IUser>({
         type: String,
         enum: ['light', 'dark', 'system'],
         default: 'system'
+    },
+    availability:{
+        type: Number,
+        default: 0
     }
 }, { timestamps: true });
 
