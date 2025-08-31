@@ -295,6 +295,22 @@ export class UserService implements IService {
     public async updateUserPreferences(userId: string, preferences: { theme: Theme }) {
         await MUser.findByIdAndUpdate(userId, { $set: { theme: preferences.theme } });
     }
+
+
+    /**
+     * Updates a user's weekly availability.
+     * @param id The ID of the user to edit.
+     * @param availability The new number of hours for availability.
+     * @returns The updated user document or null if not found.
+     */
+    public async updateAvailability(id: string, availability: number): Promise<IUser | null> {
+        if (!Types.ObjectId.isValid(id)) {
+            this.logger.warn(`Invalid ID string provided to updateAvailability: "${id}"`);
+            return null;
+        }
+        return MUser.findByIdAndUpdate(id, { $set: { availability } }, { new: true, runValidators: true }).populate('roles');
+    }
+
 }
 
 export default Singleton.getInstance(UserService);
