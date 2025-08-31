@@ -146,6 +146,61 @@ export class RoleService implements IService {
         }
         return descendants;
     }
+
+    /**
+   * Updates the parent of a given role.
+   * Includes validation to prevent circular dependencies (e.g., making a role a child of its own descendant).
+   * @param roleId The ID of the role to move.
+   * @param newParentId The ID of the new parent role.
+   * @returns The updated role document.
+   */
+    public async updateRoleParent(roleId: string, newParentId: string | null): Promise<IRole> {
+        const roleToMove = await MRole.findById(roleId);
+
+        if (!roleToMove) {
+            throw new Error("Role to move not found.");
+        }
+
+        if (newParentId) {
+            if (roleId === newParentId) {
+                throw new Error("A role cannot be its own parent.");
+            }
+
+            const newParent = await MRole.findById(newParentId);
+
+            if (!newParent) {
+                throw new Error("New parent role not found.");
+            }
+
+            // CRITICAL: Prevent circular dependencies
+            const descendants = await this.getDescendantIds(roleId);
+
+            if (descendants.has(newParentId)) {
+                throw new Error("Cannot move a role into one of its own children.");
+            }
+        }
+
+        roleToMove.parent = newParentId ? new Types.ObjectId(newParentId) : null;
+        await roleToMove.save();
+        return roleToMove;
+    }
+
+    /**
+     * Recursively finds all descendant IDs for a given role.
+     * @param roleId The starting role ID.
+     * @returns A Set containing all descendant role IDs.
+     */
+    private async getDescendantIds(roleId: string): Promise<Set<string>> {
+    const descendants = new Set<string>();
+    const children = await MRole.find({ parent: roleId });
+
+    for (const child of children) {
+        descendants.add((child._id as Types.ObjectId).toString());
+        const grandChildrenIds = await this.getDescendantIds((child._id as Types.ObjectId).toString());
+        grandChildrenIds.forEach(id => descendants.add(id));
+    }
+    return descendants;
+    }
 }
 
 export default Singleton.getInstance(RoleService);
