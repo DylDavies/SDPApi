@@ -210,30 +210,39 @@ export class UserService implements IService {
      * @param ProfData new proficiency data that will be added
      * @returns the updated user document or null if user was not found or an error occured
      */
-    public async addOrUpdateProficiency(userId: string, profData: IProficiency): Promise<IUser | null>{
+    public async addOrUpdateProficiency(userId: string, profData: IProficiency): Promise<IUser | Partial<IUser> | null>{
         const user = await MUser.findById(userId);
-        if(!user){
+        if (!user) {
             this.logger.warn(`User with Id ${userId} was not found`);
             return null;
         }
 
         const profIndex = user.proficiencies.findIndex(p => p.name === profData.name);
+        const subjectsMap = new Map<string, ISubject>(Object.entries(profData.subjects));
 
-        if(profIndex > -1){
-            const existingSubjects = user.proficiencies[profIndex].subjects;
-            profData.subjects.forEach((value: ISubject, key: string) => {
-                existingSubjects.set(key, value);
+        if (profIndex > -1){
+            const userProficiency = user.proficiencies[profIndex];
+
+            userProficiency.subjects.clear();
+
+            subjectsMap.forEach((value, key) => {
+                userProficiency.subjects.set(key, value);
             });
         } 
         else{
-            user.proficiencies.push(profData as IProficiencyDocument);
+            const newProficiency = {
+                name: profData.name,
+                subjects: subjectsMap
+            };
+            user.proficiencies.push(newProficiency as IProficiencyDocument);
         }
 
         user.markModified('proficiencies');
         await user.save();
-        return user.populate('roles');
-    }
 
+        const updatedUser = await MUser.findById(userId).populate('roles').lean();
+        return updatedUser as unknown as IUser;
+    }
 
     /**
      * Deletes a proficiency from a user.
@@ -246,23 +255,36 @@ export class UserService implements IService {
     }
 
     /**
-     * Deletes a subject from a user's proficiency.
+     * Deletes a subject from a user's proficiency by its ID.
      * @param userId The ID of the user.
      * @param profName The name of the proficiency.
-     * @param subjectKey The key of the subject to remove.
+     * @param subjectId The ID of the subject to remove.
      * @returns The updated user document or null if not found.
      */
-    public async deleteSubject(userId: string, profName: string, subjectKey: string): Promise<IUser | null>{
+    public async deleteSubject(userId: string, profName: string, subjectId: string): Promise<IUser | null> {
         const user = await MUser.findById(userId);
-        if (!user) return null;
+        if (!user) {
+            this.logger.warn(`User with Id ${userId} was not found`);
+            return null;
+        }
 
-        const prof = user.proficiencies.find(p => p.name === profName);
-        if(prof?.subjects.has(subjectKey)){
-            prof.subjects.delete(subjectKey);
+        const proficiencyToUpdate = user.proficiencies.find(p => p.name === profName);
+
+        if (proficiencyToUpdate) {
+            const subjectsAsArray = Array.from(proficiencyToUpdate.subjects.entries());
+
+            const filteredSubjects = subjectsAsArray.filter(([_key, subject]) => {
+                return subject._id?.toString() !== subjectId;
+            });
+
+            proficiencyToUpdate.subjects = new Map(filteredSubjects);
+
             user.markModified('proficiencies');
             await user.save();
         }
-        return user.populate('roles');
+        
+        const updatedUser = await MUser.findById(userId).populate('roles').lean();
+        return updatedUser as unknown as IUser;
     }
 
     public async getAllUsers() {

@@ -186,11 +186,11 @@ router.delete("/:userId/proficiencies/:profName", async (req, res) =>{
     }
 });
 
-// DELETE /api/users/:userId/proficiencies/:profName/subjects/:subjectKey - Delete a subject from a user's proficiency
-router.delete("/:userId/proficiencies/:profName/subjects/:subjectKey", async (req, res) =>{
+// DELETE /api/users/:userId/proficiencies/:profName/subjects/:subjectId - Delete a subject by its ID
+router.delete("/:userId/proficiencies/:profName/subjects/:subjectId", async (req, res) =>{
     try{
-        const { userId, profName, subjectKey } = req.params;
-        const updatedUser = await userService.deleteSubject(userId, profName, subjectKey);
+        const { userId, profName, subjectId } = req.params; 
+        const updatedUser = await userService.deleteSubject(userId, profName, subjectId); 
         
         if(!updatedUser){
             return res.status(404).send("User not found or subject deletion failed.");
@@ -202,5 +202,6 @@ router.delete("/:userId/proficiencies/:profName/subjects/:subjectKey", async (re
         res.status(500).json({ message: "Error deleting subject from user", error: (error as Error).message });
     }
 });
+
 
 export default router;
