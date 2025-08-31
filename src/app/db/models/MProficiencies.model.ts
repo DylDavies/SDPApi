@@ -1,6 +1,5 @@
 import { Schema, model, Document } from "mongoose";
 import ISubject from "../../models/interfaces/ISubject.interface";
-import { IProficiency } from "../../models/interfaces/IProficiency.interface";
 
 const SubjectSchema = new Schema<ISubject>({
     name: { type: String, required: true },
