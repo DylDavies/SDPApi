@@ -7,7 +7,10 @@ const SubjectSchema = new Schema<ISubject>({
     grades: {type: [String], required: true, default: [] },
 }, {_id: true});
 
-export interface IProficiencyDocument extends IProficiency, Document {}
+export interface IProficiencyDocument extends Document {
+    name: string;
+    subjects: Map<string, ISubject>;
+}
 
 const ProficiencySchema = new Schema<IProficiencyDocument>({
     name: { type: String, required: true },
