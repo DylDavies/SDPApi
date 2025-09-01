@@ -5,6 +5,7 @@ import { ILeave } from '../../models/interfaces/ILeave.interface';
 import { ELeave } from '../../models/enums/ELeave.enum';
 import MProficiencies, { IProficiencyDocument } from './MProficiencies.model';
 import { Theme } from '../../models/types/theme.type';
+import { EPermission } from '../../models/enums/EPermission.enum';
 
 
 export interface IUser extends Document {
@@ -24,6 +25,11 @@ export interface IUser extends Document {
     theme: Theme;
     availability?: number;
 }
+
+export interface IUserWithPermissions extends IUser {
+    permissions: EPermission[];
+}
+
 const LeaveSchema = new Schema<ILeave>({
     reason: { type: String, required: true, trim: true },
     startDate: { type: Date, required: true },

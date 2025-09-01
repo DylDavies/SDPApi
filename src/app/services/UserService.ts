@@ -1,5 +1,5 @@
 import { Singleton } from "../models/classes/Singleton";
-import MUser, { IUser } from "../db/models/MUser.model";
+import MUser, { IUser, IUserWithPermissions } from "../db/models/MUser.model";
 import RoleService from "./RoleService";
 import { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
@@ -11,6 +11,8 @@ import { IProficiencyDocument } from "../db/models/MProficiencies.model";
 import { IProficiency } from "../models/interfaces/IProficiency.interface";
 import ISubject from "../models/interfaces/ISubject.interface";
 import { Theme } from "../models/types/theme.type";
+import { IRole } from "../db/models/MRole.model";
+import { EPermission } from "../models/enums/EPermission.enum";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -99,12 +101,28 @@ export class UserService implements IService {
      * @param id The user's ObjectId as a string.
      * @returns The user document or null if not found or ID is invalid.
      */
-    public async getUser(id: string): Promise<IUser | null> {
+    public async getUser(id: string): Promise<IUserWithPermissions | null> {
         if (!Types.ObjectId.isValid(id)) {
             this.logger.warn(`Invalid ID string provided to getUser: "${id}"`);
             return null;
         }
-        return MUser.findById(id).populate('roles');
+        let user = await MUser.findById(id).populate('roles') as IUser | null;
+
+        if (user) {
+            let permissions: EPermission[] = [];
+
+            for (let i = 0; i < user.roles.length; i++) {
+                let role = user.roles[i] as unknown as IRole;
+
+                for (let perm of role.permissions) {
+                    if (!permissions.includes(perm)) permissions.push(perm);
+                }
+            }
+
+            let userWithPermissions = {...(user as unknown as {_doc: IUser})._doc, permissions};
+
+            return userWithPermissions as IUserWithPermissions;
+        } else return null;
     }
     
     /**
