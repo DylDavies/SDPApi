@@ -28,6 +28,11 @@ export enum EPermission {
     BUNDLES_EDIT = 'bundles:edit',
     BUNDLES_DELETE = 'bundles:delete',
 
+    //Leave Management Permissions
+    LEAVE_MANAGE = "leave:manage",
+
     // Proficiency Management Permissions
     PROFICIENCIES_MANAGE = 'proficiencies:manage'
+
+
 }
