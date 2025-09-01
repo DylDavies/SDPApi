@@ -55,4 +55,20 @@ router.delete("/:id", hasPermission(EPermission.ROLES_DELETE), async (req, res) 
     }
 });
 
+// PATCH /api/roles/:roleId/parent - Update a role's parent
+router.patch('/:roleId/parent', hasPermission(EPermission.ROLES_EDIT), async (req, res) => {
+    try {
+      const { roleId } = req.params;
+      const { newParentId } = req.body;
+
+      if (!newParentId) return res.status(400).send("Missing required field: newParentId")
+
+      const updatedRole = await roleService.updateRoleParent(roleId, newParentId);
+      res.status(200).json(updatedRole);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  }
+);
+
 export default router;
