@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { EPermission } from '../models/enums/EPermission.enum';
 import IPayloadUser from '../models/interfaces/IPayloadUser.interface';
 import { EUserType } from '../models/enums/EUserType.enum';
+import UserService from '../services/UserService';
 
 /**
  * A middleware factory that creates a permission-checking middleware.
@@ -11,8 +12,9 @@ import { EUserType } from '../models/enums/EUserType.enum';
  * @returns An Express middleware function.
  */
 export function hasPermission(requiredPermissions: EPermission | EPermission[]) {
-    return (req: Request, res: Response, next: NextFunction) => {
-        const user = req.user as IPayloadUser & { permissions?: EPermission[] };
+    return async (req: Request, res: Response, next: NextFunction) => {
+        if (!req.user) return false;
+        const user = await UserService.getUser((req.user as IPayloadUser).id);
 
         if (user && user.type == EUserType.Admin) return next();
 

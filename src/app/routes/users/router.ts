@@ -186,11 +186,11 @@ router.delete("/:userId/proficiencies/:profName", async (req, res) =>{
     }
 });
 
-// DELETE /api/users/:userId/proficiencies/:profName/subjects/:subjectKey - Delete a subject from a user's proficiency
-router.delete("/:userId/proficiencies/:profName/subjects/:subjectKey", async (req, res) =>{
+// DELETE /api/users/:userId/proficiencies/:profName/subjects/:subjectId - Delete a subject by its ID
+router.delete("/:userId/proficiencies/:profName/subjects/:subjectId", async (req, res) =>{
     try{
-        const { userId, profName, subjectKey } = req.params;
-        const updatedUser = await userService.deleteSubject(userId, profName, subjectKey);
+        const { userId, profName, subjectId } = req.params; 
+        const updatedUser = await userService.deleteSubject(userId, profName, subjectId); 
         
         if(!updatedUser){
             return res.status(404).send("User not found or subject deletion failed.");
@@ -202,5 +202,26 @@ router.delete("/:userId/proficiencies/:profName/subjects/:subjectKey", async (re
         res.status(500).json({ message: "Error deleting subject from user", error: (error as Error).message });
     }
 });
+
+// PATCH /api/users/:userId/availability - Update user's availability
+router.patch("/:userId/availability", hasPermission(EPermission.PROFILE_PAGE_VIEW), async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const { availability } = req.body;
+
+        if (typeof availability !== 'number' || availability < 0) {
+            return res.status(400).json({ message: "A valid non-negative number for availability is required." });
+        }
+
+        const updatedUser = await userService.updateAvailability(userId, availability);
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found." });
+        }
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating availability", error: (error as Error).message });
+    }
+});
+
 
 export default router;
