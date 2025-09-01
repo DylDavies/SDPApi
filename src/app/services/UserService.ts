@@ -106,22 +106,21 @@ export class UserService implements IService {
             this.logger.warn(`Invalid ID string provided to getUser: "${id}"`);
             return null;
         }
-        let user = await MUser.findById(id).populate('roles') as IUser | null;
+
+        const user = await MUser.findById(id).populate('roles') as IUser | null;
 
         if (user) {
-            let permissions: EPermission[] = [];
+            const permissions: EPermission[] = [];
 
             for (let i = 0; i < user.roles.length; i++) {
-                let role = user.roles[i] as unknown as IRole;
+                const role = user.roles[i] as unknown as IRole;
 
-                for (let perm of role.permissions) {
+                for (const perm of role.permissions) {
                     if (!permissions.includes(perm)) permissions.push(perm);
                 }
             }
 
-            let userWithPermissions = {...(user as unknown as {_doc: IUser})._doc, permissions};
-
-            return userWithPermissions as IUserWithPermissions;
+            return {...(user as unknown as {_doc: IUser})._doc, permissions} as IUserWithPermissions;
         } else return null;
     }
     

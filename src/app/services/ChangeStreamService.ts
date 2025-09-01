@@ -19,7 +19,7 @@ export class ChangeStreamService implements IService {
     public async init(): Promise<void> {
         try {
             MUser.watch().on('change', (change) => {
-                if (!change.updateDescription.updatedFields.theme) {
+                if (!change.updateDescription?.updatedFields.theme) {
                     this.logger.info(`Change detected in 'users' collection: ${change.operationType}`);
                     this.socketService.broadcast(ESocketMessage.UsersUpdated, { change });
                 }
