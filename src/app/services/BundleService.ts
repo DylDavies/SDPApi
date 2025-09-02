@@ -45,7 +45,7 @@ export class BundleService implements IService {
      * @param creatorId The user ID of the person creating this bundle.
      * @returns The newly created bundle.
      */
-    public async createBundle(studentId: string, subjects: { subject: string, tutor: string, hours: number }[], creatorId: string): Promise<IBundle> {
+    public async createBundle(studentId: string, subjects: { subject: string, grade: string, tutor: string, hours: number }[], creatorId: string): Promise<IBundle> {
         const studentObjectId = new Types.ObjectId(studentId);
         const creatorObjectId = new Types.ObjectId(creatorId);
 
@@ -65,7 +65,7 @@ export class BundleService implements IService {
      * @param subject The subject details to add.
      * @returns The updated bundle.
      */
-    public async addSubjectToBundle(bundleId: string, subject: { subject: string, tutor: string, hours: number }): Promise<IBundle | null> {
+    public async addSubjectToBundle(bundleId: string, subject: { subject: string, grade: string, tutor: string, hours: number }): Promise<IBundle | null> {
         return MBundle.findByIdAndUpdate(
             bundleId,
             { $push: { subjects: subject } },
@@ -74,28 +74,23 @@ export class BundleService implements IService {
     }
 
     /**
-     * Removes a subject from a bundle by its name.
+     * Removes a subject from a bundle by its ID.
      * @param bundleId The ID of the bundle to update.
-     * @param subjectName The name of the subject to remove (e.g., "Math").
+     * @param subjectId The ID of the subject entry to remove.
      * @returns The updated bundle, or null if the bundle was not found. Throws an error if the subject is not found.
      */
-    
-    public async removeSubjectFromBundle(bundleId: string, subjectName: string): Promise<IBundle | null> {
-       
+    public async removeSubjectFromBundle(bundleId: string, subjectId: string): Promise<IBundle | null> {
         const bundle = await MBundle.findById(bundleId);
         if (!bundle) {
-            return null; 
+            return null;
         }
 
-        
-        const subjectExists = bundle.subjects.some(s => s.subject === subjectName);
+        const subjectExists = bundle.subjects.some(s => s._id?.toString() === subjectId);
         if (!subjectExists) {
-           
-            throw new Error(`Subject "${subjectName}" not found in this bundle.`);
+            throw new Error(`Subject with id "${subjectId}" not found in this bundle.`);
         }
 
-       
-        bundle.subjects = bundle.subjects.filter(s => s.subject !== subjectName);
+        bundle.subjects = bundle.subjects.filter(s => s._id?.toString() !== subjectId);
         await bundle.save();
         return bundle;
     }

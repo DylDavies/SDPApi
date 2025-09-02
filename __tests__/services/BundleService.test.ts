@@ -29,6 +29,7 @@ describe('BundleService', () => {
             const creatorId = new Types.ObjectId().toHexString();
             const subjects = [{
                 subject: 'Calculus I',
+                grade: 'A',
                 tutor: new Types.ObjectId().toHexString(),
                 hours: 15
             }];
@@ -47,7 +48,7 @@ describe('BundleService', () => {
     describe('addSubjectToBundle', () => {
         it('should call findByIdAndUpdate with a $push operator', async () => {
             const bundleId = new Types.ObjectId().toHexString();
-            const newSubject = { subject: 'History', tutor: new Types.ObjectId().toHexString(), hours: 5 };
+            const newSubject = { subject: 'History', grade: 'A', tutor: new Types.ObjectId().toHexString(), hours: 5 };
             
             MBundleMock.findByIdAndUpdate.mockResolvedValue({ _id: bundleId, ...newSubject } as any);
 
@@ -65,39 +66,39 @@ describe('BundleService', () => {
     describe('removeSubjectFromBundle', () => {
         it('should remove a subject by name and save the bundle', async () => {
             const bundleId = new Types.ObjectId().toHexString();
-            const subjectNameToRemove = 'Math';
+            const subjectIdToRemove = new Types.ObjectId();
             const mockBundle = {
                 _id: bundleId,
                 subjects: [
-                    { subject: 'Math', tutor: new Types.ObjectId(), hours: 10 },
-                    { subject: 'Science', tutor: new Types.ObjectId(), hours: 8 }
+                    { _id: subjectIdToRemove, subject: 'Math', tutor: new Types.ObjectId(), hours: 10 },
+                    { _id: new Types.ObjectId(), subject: 'Science', tutor: new Types.ObjectId(), hours: 8 }
                 ],
                 save: jest.fn().mockResolvedValue(true)
             };
 
             MBundleMock.findById.mockResolvedValue(mockBundle as any);
 
-            const result = await bundleService.removeSubjectFromBundle(bundleId, subjectNameToRemove);
+            const result = await bundleService.removeSubjectFromBundle(bundleId, subjectIdToRemove.toHexString());
 
             expect(MBundleMock.findById).toHaveBeenCalledWith(bundleId);
             expect(mockBundle.save).toHaveBeenCalled();
-            expect(result?.subjects.some(s => s.subject === subjectNameToRemove)).toBe(false);
+            expect(result?.subjects.some(s => s._id === subjectIdToRemove)).toBe(false);
             expect(result?.subjects.length).toBe(1);
         });
 
         it('should throw an error if the subject is not found', async () => {
             const bundleId = new Types.ObjectId().toHexString();
-            const subjectNameToRemove = 'History';
+            const subjectIdToRemove = new Types.ObjectId().toHexString();
             const mockBundle = {
                 _id: bundleId,
-                subjects: [{ subject: 'Math', tutor: new Types.ObjectId(), hours: 10 }],
+                subjects: [{  _id: new Types.ObjectId(), subject: 'Math', tutor: new Types.ObjectId(), hours: 10 }],
                 save: jest.fn()
             };
 
             MBundleMock.findById.mockResolvedValue(mockBundle as any);
 
-            await expect(bundleService.removeSubjectFromBundle(bundleId, subjectNameToRemove))
-                .rejects.toThrow(`Subject "${subjectNameToRemove}" not found in this bundle.`);
+            await expect(bundleService.removeSubjectFromBundle(bundleId, subjectIdToRemove))
+                .rejects.toThrow(`Subject with id "${subjectIdToRemove}" not found in this bundle.`);
         });
     });
 
