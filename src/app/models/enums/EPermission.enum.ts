@@ -27,6 +27,7 @@ export enum EPermission {
     BUNDLES_VIEW = 'bundles:view',
     BUNDLES_EDIT = 'bundles:edit',
     BUNDLES_DELETE = 'bundles:delete',
+    BUNDLES_APPROVE = 'bundles:approve',
 
     //Leave Management Permissions
     LEAVE_MANAGE = "leave:manage",

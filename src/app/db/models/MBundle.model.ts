@@ -5,6 +5,7 @@ import { EBundleStatus } from '../../models/enums/EBundleStatus.enum';
 interface IBundleSubject {
     _id?: Types.ObjectId; // FIX: Added optional _id so TypeScript recognizes it
     subject: string;
+    grade: string;
     tutor: Types.ObjectId;
     hours: number;
 }
@@ -23,6 +24,7 @@ export interface IBundle extends Document {
 // Schema for the embedded subject documents
 const BundleSubjectSchema = new Schema<IBundleSubject>({
     subject: { type: String, required: true, trim: true },
+    grade: { type: String, required: true, trim: true },
     tutor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     hours: { type: Number, required: true, min: 0 }
 });
@@ -37,8 +39,8 @@ const BundleSchema = new Schema<IBundle>({
     subjects: [BundleSubjectSchema],
     isActive: { type: Boolean, default: true },
     status: {
-        type: String, 
-        enum: Object.values(EBundleStatus), 
+        type: String,
+        enum: Object.values(EBundleStatus),
         default: EBundleStatus.Pending
     },
     createdBy: {
