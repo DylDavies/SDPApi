@@ -4,6 +4,8 @@ import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { authenticationMiddleware } from "../../middleware/auth.middleware";
 import { EBundleStatus } from "../../models/enums/EBundleStatus.enum";
 import { Types } from "mongoose";
+import { hasPermission } from "../../middleware/permission.middleware";
+import { EPermission } from "../../models/enums/EPermission.enum";
 
 const router = Router();
 const bundleService = BundleService;
@@ -12,7 +14,7 @@ const bundleService = BundleService;
 router.use(authenticationMiddleware);
 
 // GET /api/bundle - Get all bundles
-router.get("/", async (req, res) => {
+router.get("/", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
     try {
         const bundles = await bundleService.getBundles();
         res.status(200).json(bundles);
@@ -22,7 +24,7 @@ router.get("/", async (req, res) => {
 });
 
 // POST /api/bundle - Create a new bundle
-router.post("/", async (req, res) => {
+router.post("/", hasPermission(EPermission.BUNDLES_CREATE), async (req, res) => {
     try {
         const { student, subjects } = req.body;
         const creator = req.user as IPayloadUser;
@@ -43,7 +45,7 @@ router.post("/", async (req, res) => {
 });
 
 // PATCH /api/bundle/:bundleId - Update a bundle
-router.patch("/:bundleId", async (req, res) => {
+router.patch("/:bundleId", hasPermission(EPermission.BUNDLES_EDIT), async (req, res) => {
     try {
         const { bundleId } = req.params;
         const updateData = req.body;
@@ -62,7 +64,7 @@ router.patch("/:bundleId", async (req, res) => {
 });
 
 // POST /api/bundle/:bundleId/subjects - Add a subject to a bundle
-router.post("/:bundleId/subjects", async (req, res) => {
+router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), async (req, res) => {
     try {
         const { bundleId } = req.params;
         const subject = req.body;
@@ -91,7 +93,7 @@ router.post("/:bundleId/subjects", async (req, res) => {
 });
 
 // DELETE /api/bundle/:bundleId/subjects/:subjectName - Remove a subject from a bundle
-router.delete("/:bundleId/subjects/:subjectName", async (req, res) => {
+router.delete("/:bundleId/subjects/:subjectName", hasPermission(EPermission.BUNDLES_EDIT), async (req, res) => {
     try {
         const { bundleId, subjectName } = req.params;
         
@@ -115,7 +117,7 @@ router.delete("/:bundleId/subjects/:subjectName", async (req, res) => {
 
 
 // PATCH /api/bundle/:bundleId/status/active - Mark a bundle as active or inactive
-router.patch("/:bundleId/status/active", async (req, res) => {
+router.patch("/:bundleId/status/active", hasPermission(EPermission.BUNDLES_DELETE), async (req, res) => {
     try {
         const { bundleId } = req.params;
         const { isActive } = req.body;
@@ -138,7 +140,7 @@ router.patch("/:bundleId/status/active", async (req, res) => {
 });
 
 // PATCH /api/bundle/:bundleId/status - Update the status of a bundle (e.g., 'pending', 'approved')
-router.patch("/:bundleId/status", async (req, res) => {
+router.patch("/:bundleId/status", hasPermission(EPermission.BUNDLES_APPROVE), async (req, res) => {
     try {
         const { bundleId } = req.params;
         const { status } = req.body;
