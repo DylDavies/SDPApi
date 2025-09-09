@@ -38,6 +38,6 @@ export enum EPermission {
     // Badge Management Permissions
     BADGES_CREATE = 'badges:create',
     BADGES_MANAGE = 'badges:manage',
-    BADGES_VIEW = 'badges:view'
+    BADGES_VIEW = 'badges:view',
 
 }
