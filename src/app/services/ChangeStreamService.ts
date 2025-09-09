@@ -19,20 +19,30 @@ export class ChangeStreamService implements IService {
     public async init(): Promise<void> {
         try {
             MUser.watch().on('change', (change) => {
-                if (!change.updateDescription?.updatedFields.theme) {
+                if (change.updateDescription?.updatedFields.theme) return;
+
+                if (change.operationType === 'update' && change.documentKey._id) {
+                    const userId = change.documentKey._id.toString();
+
+                    this.logger.info(`Change detected in 'users' collection for user ${userId}: ${change.operationType}`);
+
+                    this.socketService.emitToUser(userId, ESocketMessage.CurrentUserUpdate, { change });
+
+                    this.socketService.broadcastToTopic(ESocketMessage.UsersUpdated, { change });
+                } else {
                     this.logger.info(`Change detected in 'users' collection: ${change.operationType}`);
-                    this.socketService.broadcast(ESocketMessage.UsersUpdated, { change });
+                    this.socketService.broadcastToTopic(ESocketMessage.UsersUpdated, { change });
                 }
             });
 
             MRole.watch().on('change', (change) => {
                 this.logger.info(`Change detected in 'roles' collection: ${change.operationType}`);
-                this.socketService.broadcast(ESocketMessage.RolesUpdated, { change });
+                this.socketService.broadcastToTopic(ESocketMessage.RolesUpdated, { change });
             });
 
             MProficiencies.watch().on('change', (change) =>{
                 this.logger.info(`Change detected in 'proficiencies' collection: ${ change }`);
-                this.socketService.broadcast(ESocketMessage.ProficienciesUpdated, { change});
+                this.socketService.broadcastToTopic(ESocketMessage.ProficienciesUpdated, { change});
             })
 
             this.logger.info('Now watching database collections for changes...');
