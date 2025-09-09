@@ -1,7 +1,7 @@
 import { Singleton } from "../models/classes/Singleton";
 import MUser, { IUser, IUserWithPermissions } from "../db/models/MUser.model";
 import RoleService from "./RoleService";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
 import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
@@ -13,6 +13,7 @@ import ISubject from "../models/interfaces/ISubject.interface";
 import { Theme } from "../models/types/theme.type";
 import { IRole } from "../db/models/MRole.model";
 import { EPermission } from "../models/enums/EPermission.enum";
+import IBadge from "../models/interfaces/IBadge.interface";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -326,6 +327,49 @@ export class UserService implements IService {
             return null;
         }
         return MUser.findByIdAndUpdate(id, { $set: { availability } }, { new: true, runValidators: true }).populate('roles');
+    }
+
+    /**
+     * Assigns a badge to a user by embedding it in their document.
+     * Prevents adding a badge if one with the same name already exists for that user.
+     * @param userId The ID of the user.
+     * @param badgeData The full badge object to embed.
+     * @returns The updated user document.
+     */
+    public async addBadgeToUser(userId: string, badgeData: IBadge): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found.");
+        }
+        
+        // Prevent duplicate badges by name
+        const badgeExists = user.badges?.some(b => b.name === badgeData.name);
+        if (badgeExists) {
+            this.logger.info(`User ${userId} already has the badge "${badgeData.name}".`);
+            return user;
+        }
+
+        return (await MUser.findByIdAndUpdate(
+            userId,
+            { $push: { badges: badgeData } },
+            { new: true }
+        ).populate('roles'))!;
+    }
+
+    /**
+     * Removes a badge from a user.
+     * @param userId The ID of the user.
+     * @param badgeId The ID of the badge to remove.
+     * @returns The updated user document.
+     */
+    public async removeBadgeFromUser(userId: string, badgeId: string): Promise<IUser> {
+        const user = await MUser.findById(userId);
+
+        user!.badges = user!.badges?.filter((badge) => badge._id.toString() !== badgeId);
+
+        await user!.save(); 
+
+        return user!;
     }
 
 }

@@ -4,7 +4,6 @@ import { LoggingService } from "../../services/LoggingService";
 import { authenticationMiddleware } from "../../middleware/auth.middleware";
 import BadgeService from "../../services/BadgeService";
 import IBadge from "../../models/interfaces/IBadge.interface";
-import { error } from "console";
 
 const router = Router();
 const logger = Singleton.getInstance(LoggingService);
