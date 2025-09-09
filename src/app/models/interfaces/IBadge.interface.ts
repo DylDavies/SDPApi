@@ -9,5 +9,5 @@ export default interface IBadge{
     description: string;
     permanent: boolean;
     expirationDate?: Date;
-    bonus: Number;
+    bonus: number;
 }
