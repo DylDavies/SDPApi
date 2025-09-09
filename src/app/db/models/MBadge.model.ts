@@ -1,4 +1,4 @@
-import mongoose, { model, Schema } from "mongoose";
+import { model, Schema } from "mongoose";
 import IBadge from "../../models/interfaces/IBadge.interface";
 
 export interface IBadgeDocument extends Document, IBadge{}

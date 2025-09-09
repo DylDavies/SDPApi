@@ -1,7 +1,7 @@
 import { Singleton } from "../models/classes/Singleton";
 import MUser, { IUser, IUserWithPermissions } from "../db/models/MUser.model";
 import RoleService from "./RoleService";
-import mongoose, { Types } from "mongoose";
+import { Types } from "mongoose";
 import { LoggingService } from "./LoggingService";
 import { IService } from "../models/interfaces/IService.interface";
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
