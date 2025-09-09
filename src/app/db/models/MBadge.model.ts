@@ -11,7 +11,7 @@ const badgeSchema = new Schema<IBadgeDocument>({
     description: { type: String, required: true },
     permanent: { type: Boolean, required: true, default: false },
     expirationDate: { type: Date, required: false },
-    bonus: { type: mongoose.Schema.Types.Decimal128, required: true, default: 0 }
+    bonus: { type: Number, required: true, default: 0 }
     
 }, { timestamps: true })
 
