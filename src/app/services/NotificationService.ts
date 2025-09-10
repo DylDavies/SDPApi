@@ -10,9 +10,24 @@ import { EServiceLoadPriority } from '../models/enums/EServiceLoadPriority.enum'
 
 export class NotificationService implements IService {
     public static loadPriority = EServiceLoadPriority.Medium;
-    private logger = Singleton.getInstance(LoggingService);
-    private socketService = Singleton.getInstance(SocketService);
-    private emailService = Singleton.getInstance(EmailService);
+    
+    private _logger: LoggingService | null = null;
+    private get logger(): LoggingService {
+        if (!this._logger) this._logger = Singleton.getInstance(LoggingService);
+        return this._logger;
+    }
+
+    private _socketService: SocketService | null = null;
+    private get socketService(): SocketService {
+        if (!this._socketService) this._socketService = Singleton.getInstance(SocketService);
+        return this._socketService;
+    }
+
+    private _emailService: EmailService | null = null;
+    private get emailService(): EmailService {
+        if (!this._emailService) this._emailService = Singleton.getInstance(EmailService);
+        return this._emailService;
+    }
 
     async init(): Promise<void> {
         this.logger.info("Notification service initialized");
@@ -59,7 +74,7 @@ export class NotificationService implements IService {
      * @returns A promise that resolves to an array of notifications.
      */
     async getNotificationsForUser(userId: string): Promise<INotification[]> {
-        return MNotification.find({ recipientId: userId }).sort({ createdAt: -1 });
+        return MNotification.find({ recipientId: userId, deletedAt: null }).sort({ createdAt: -1 });
     }
 
     /**
@@ -71,6 +86,71 @@ export class NotificationService implements IService {
         const notification = await MNotification.findByIdAndUpdate(
             notificationId,
             { read: true },
+            { new: true }
+        );
+
+        if (notification) {
+            this.socketService.emitToUser(notification.recipientId.toString(), ESocketMessage.NotificationsUpdated, notification);
+        }
+
+        return notification;
+    }
+
+    /**
+     * Marks a notification as deleted.
+     * @param notificationId The ID of the notification to delete.
+     * @returns The updated notification document or null if not found.
+     */
+    async deleteNotification(notificationId: string): Promise<INotification | null> {
+        const notification = await MNotification.findByIdAndUpdate(
+            notificationId,
+            { deletedAt: new Date() },
+            { new: true }
+        );
+
+        if (notification) {
+            // Also emit an update to the user
+            this.socketService.emitToUser(notification.recipientId.toString(), ESocketMessage.NotificationsUpdated, notification);
+        }
+
+        return notification;
+    }
+
+    /**
+     * Marks all unread notifications as read for a specific user.
+     * @param userId The ID of the user.
+     */
+    async markAllAsReadForUser(userId: string): Promise<{ acknowledged: boolean, modifiedCount: number }> {
+        const result = await MNotification.updateMany(
+            { recipientId: userId, read: false },
+            { $set: { read: true } }
+        );
+        this.socketService.emitToUser(userId, ESocketMessage.NotificationsUpdated, {});
+        return { acknowledged: result.acknowledged, modifiedCount: result.modifiedCount };
+    }
+
+    /**
+     * Deletes all read notifications for a specific user (soft delete).
+     * @param userId The ID of the user.
+     */
+    async deleteAllReadForUser(userId: string): Promise<{ acknowledged: boolean, modifiedCount: number }> {
+        const result = await MNotification.updateMany(
+            { recipientId: userId, read: true, deletedAt: null },
+            { $set: { deletedAt: new Date() } }
+        );
+        this.socketService.emitToUser(userId, ESocketMessage.NotificationsUpdated, {});
+        return { acknowledged: result.acknowledged, modifiedCount: result.modifiedCount };
+    }
+
+    /**
+     * Restores a soft-deleted notification.
+     * @param notificationId The ID of the notification to restore.
+     * @returns The restored notification document or null if not found.
+     */
+    async restoreNotification(notificationId: string): Promise<INotification | null> {
+        const notification = await MNotification.findByIdAndUpdate(
+            notificationId,
+            { $set: { deletedAt: null } },
             { new: true }
         );
 

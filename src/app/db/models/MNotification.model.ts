@@ -6,6 +6,7 @@ export interface INotification extends Document {
     message: string;
     read: boolean;
     createdAt: Date;
+    deletedAt?: Date;
 }
 
 const NotificationSchema = new Schema<INotification>({
@@ -14,6 +15,7 @@ const NotificationSchema = new Schema<INotification>({
     message: { type: String, required: true },
     read: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
+    deletedAt: { type: Date, default: null },
 });
 
 const MNotification = model<INotification>('Notification', NotificationSchema);
