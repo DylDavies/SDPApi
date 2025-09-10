@@ -37,8 +37,6 @@ const LeaveSchema = new Schema<ILeave>({
     approved: { type: String, enum: Object.values(ELeave), default: ELeave.Pending }
 }, { timestamps: true });
 
-const ProficiencySchemaUser = MProficiencies.schema;
-
 const UserSchema = new Schema<IUser>({
     googleId: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true, trim: true },
@@ -61,7 +59,7 @@ const UserSchema = new Schema<IUser>({
         required: true,
         default: false
     },
-    proficiencies: [ProficiencySchemaUser],
+    proficiencies: [new Schema(MProficiencies.schema.obj), { _id: false }],
     theme: {
         type: String,
         enum: ['light', 'dark', 'system'],
