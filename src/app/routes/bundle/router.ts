@@ -22,6 +22,26 @@ router.get("/", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
         res.status(500).json({ message: "Error fetching bundles", error: (error as Error).message });
     }
 });
+// GET /api/bundle/:bundleId - Get a single bundle by its ID
+router.get("/:bundleId", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
+    try {
+        const { bundleId } = req.params;
+
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
+        }
+
+        const bundle = await bundleService.getBundleById(bundleId); // Assumes you will create this service method
+
+        if (!bundle) {
+            return res.status(404).send("Bundle not found.");
+        }
+
+        res.status(200).json(bundle);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching bundle", error: (error as Error).message });
+    }
+});
 
 // POST /api/bundle - Create a new bundle
 router.post("/", hasPermission(EPermission.BUNDLES_CREATE), async (req, res) => {
