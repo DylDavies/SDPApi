@@ -1,6 +1,5 @@
 import { UserService } from '../../src/app/services/UserService';
-import { Singleton } from '../../src/app/models/classes/Singleton';
-import MUser, { IUser } from '../../src/app/db/models/MUser.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import roleService, {RoleService} from '../../src/app/services/RoleService';
 import notificationService from '../../src/app/services/NotificationService';
 import { Types } from 'mongoose';

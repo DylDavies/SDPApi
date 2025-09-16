@@ -2,7 +2,6 @@ import request from 'supertest';
 import express, { Request, Response, NextFunction } from 'express';
 import notificationsRouter from '../../../src/app/routes/user/notifications/router';
 import NotificationService from '../../../src/app/services/NotificationService';
-import { authenticationMiddleware } from '../../../src/app/middleware/auth.middleware';
 import IPayloadUser from '../../../src/app/models/interfaces/IPayloadUser.interface';
 import { JwtPayload } from 'jsonwebtoken';
 

@@ -2,7 +2,6 @@ import request from 'supertest';
 import express, { NextFunction, Request, Response } from 'express';
 import rolesRouter from '../../src/app/routes/roles/router';
 import RoleService from '../../src/app/services/RoleService';
-import { hasPermission } from '../../src/app/middleware/permission.middleware';
 
 // Mock the dependencies
 jest.mock('../../src/app/services/RoleService');
@@ -52,7 +51,7 @@ describe('Roles Router', () => {
         });
 
         it('should return 400 if required fields are missing', async () => {
-            const { name, ...incompleteData } = roleData; // Missing name
+           const incompleteData = {...roleData, name: null}
             const response = await request(app).post('/api/roles').send(incompleteData);
             expect(response.status).toBe(400);
             expect(response.text).toContain('Missing required fields');

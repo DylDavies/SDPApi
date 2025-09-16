@@ -2,14 +2,11 @@ import request from 'supertest';
 import express, { NextFunction, Request, Response } from 'express';
 import usersRouter from '../../src/app/routes/users/router';
 import UserService from '../../src/app/services/UserService';
-import { hasPermission } from '../../src/app/middleware/permission.middleware';
 import { EUserType } from '../../src/app/models/enums/EUserType.enum';
 import { ELeave } from '../../src/app/models/enums/ELeave.enum';
 import IPayloadUser from '../../src/app/models/interfaces/IPayloadUser.interface';
 import { JwtPayload } from 'jsonwebtoken';
 
-// FIX: Extend the Express Request type to include the 'user' property for our tests.
-// This tells TypeScript that the `req.user` object is expected and valid.
 declare global {
     namespace Express {
         interface Request {
