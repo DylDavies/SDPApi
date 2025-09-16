@@ -73,8 +73,6 @@ describe('UserService', () => {
 
     describe('updateLeaveRequestStatus', () => {
         it('should update a leave request, send notification, and save the user', async () => {
-            // FIX: Use a valid ObjectId string for the ID and mock the `toString` method
-            // to simulate Mongoose document behavior without calling a constructor.
             const leaveRequestId = '507f1f77bcf86cd799439011';
             const leaveRequest = {
                 _id: { toString: () => leaveRequestId },
