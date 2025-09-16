@@ -178,7 +178,7 @@ export class UserService implements IService {
                         <a href="${process.env.FRONTEND_URL}/dashboard/profile" class="button">View My Profile</a>
                     </div>
                     <div class="footer">
-                        <p>&copy; ${new Date().getFullYear()} Your Company Name. All rights reserved.</p>
+                        <p>&copy; ${new Date().getFullYear()} TutorCore. All rights reserved.</p>
                     </div>
                 </div>
             </body>
