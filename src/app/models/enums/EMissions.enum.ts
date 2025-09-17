@@ -8,7 +8,7 @@
  */
 export enum EMissionStatus {
     Active = 'active',
-    DeActive = 'deactive',
+    InActive = 'inactive',
     Completed = 'completed',
     Achieved = 'achieved',
     Failed = 'failed'
