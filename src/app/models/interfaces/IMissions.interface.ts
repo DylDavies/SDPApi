@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+
 import { EMissionStatus } from "../enums/EMissions.enum";
 
 export interface IPopulatedStudent {
@@ -7,9 +7,10 @@ export interface IPopulatedStudent {
 };
 
 export default interface IMissions{
-    _id: ObjectId;
+    _id: string;
     document: string;
     student: string | IPopulatedStudent; // The ID of the student this bundle is for, or the populated student object
+    tutor: string | IPopulatedStudent;
     createdAt: Date;
     remuneration: number;
     commissionedBy: string | IPopulatedStudent;

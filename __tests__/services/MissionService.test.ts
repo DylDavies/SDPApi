@@ -18,6 +18,7 @@ const createMockMission = (): IMissions => ({
   _id: new Types.ObjectId(),
   document: 'mission_doc.pdf',
   student: new Types.ObjectId(),
+  tutor: new Types.ObjectId(),
   remuneration: 100,
   commissionedBy: new Types.ObjectId(),
   dateCompleted: new Date('2025-10-01T00:00:00.000Z'),
@@ -89,6 +90,7 @@ describe('MissionService', () => {
       const missionData = {
         document: 'new_doc.pdf',
         studentId: new Types.ObjectId().toHexString(),
+        tutorId:new Types.ObjectId().toHexString(),
         remuneration: 150,
         commissionedById: new Types.ObjectId().toHexString(),
         dateCompleted: new Date(),

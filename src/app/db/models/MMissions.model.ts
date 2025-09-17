@@ -6,6 +6,7 @@ export  interface IMissions extends Document{
     _id: Types.ObjectId;
     document: string; // URL or reference to the document/mission details
     student: Types.ObjectId; // The ID of the student this bundle is for, or the populated student object
+    tutor: Types.ObjectId; //Id of tutor who wrote the mission
     createdAt: Date; // Automatically managed by timestamps
     remuneration: number; // The payment for the mission
     commissionedBy: Types.ObjectId;
@@ -22,6 +23,11 @@ const MissionSchema = new Schema<IMissions>({
     trim: true
   },
   student: {
+    type: Schema.Types.ObjectId,
+    ref: 'User', // Creates a reference to User model
+    required: true
+  },
+    tutor: {
     type: Schema.Types.ObjectId,
     ref: 'User', // Creates a reference to User model
     required: true
