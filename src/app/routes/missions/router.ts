@@ -5,7 +5,7 @@ import { EMissionStatus } from "../../models/enums/EMissions.enum"; // Import th
 import { Types } from "mongoose";
 import { hasPermission } from "../../middleware/permission.middleware";
 import { EPermission } from "../../models/enums/EPermission.enum";
-import MissionsService, { MissionService } from "../../services/MissionsService";
+import MissionsService from "../../services/MissionsService";
 
 const router = Router();
 
