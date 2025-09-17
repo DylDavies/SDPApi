@@ -23,6 +23,17 @@ export class BundleService implements IService {
     public async getBundles(): Promise<IBundle[]> {
         return MBundle.find().populate('student', 'displayName').populate('subjects.tutor', 'displayName').exec();
     }
+    /**
+ * Finds a single bundle by its ID and populates the student and tutor details.
+ * @param id The ID of the bundle to find.
+ * @returns A promise that resolves to the found IBundle document or null.
+ */
+    public async getBundleById(id: string): Promise<IBundle | null> {
+        return MBundle.findById(id)
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .exec();
+    }
 
     /**
      * Updates an existing bundle with new data.
