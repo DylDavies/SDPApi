@@ -3,7 +3,7 @@ import { EBundleStatus } from '../../models/enums/EBundleStatus.enum';
 
 // Interface for the subjects within a bundle
 interface IBundleSubject {
-    _id?: Types.ObjectId; // FIX: Added optional _id so TypeScript recognizes it
+    _id?: Types.ObjectId
     subject: string;
     grade: string;
     tutor: Types.ObjectId;
