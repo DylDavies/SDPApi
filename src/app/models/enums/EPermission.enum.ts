@@ -33,7 +33,8 @@ export enum EPermission {
     LEAVE_MANAGE = "leave:manage",
 
     // Proficiency Management Permissions
-    PROFICIENCIES_MANAGE = 'proficiencies:manage'
+    PROFICIENCIES_MANAGE = 'proficiencies:manage',
 
-
+    // Sidebar Management
+    SIDEBAR_MANAGE = 'sidebar:manage'
 }
