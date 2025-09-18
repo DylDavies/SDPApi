@@ -36,5 +36,7 @@ export enum EPermission {
     PROFICIENCIES_MANAGE = 'proficiencies:manage',
 
     // Sidebar Management
-    SIDEBAR_MANAGE = 'sidebar:manage'
+    SIDEBAR_MANAGE = 'sidebar:manage',
+
+    NOTIFICATIONS_VIEW = 'notifications:view'
 }

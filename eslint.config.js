@@ -20,7 +20,8 @@ export default tseslint.config(
         }
       ],
       '@typescript-eslint/no-explicit-any': 'warn',
-      'no-console': 'error'
+      'no-console': 'error',
+      '@typescript-eslint/no-namespace': 'off'
     }
   },
 
