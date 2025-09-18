@@ -12,7 +12,7 @@ export const keyAuth = async (req: Request, res: Response, next: NextFunction) =
         return res.status(401).json({ message: 'Unauthorized: Missing or invalid API key format.' });
     }
 
-    const providedKey = authHeader.split(' ')[1];
+    const providedKey = authHeader.substring(7);
     if (!providedKey) {
         return res.status(401).json({ message: 'Unauthorized: API key is missing.' });
     }
