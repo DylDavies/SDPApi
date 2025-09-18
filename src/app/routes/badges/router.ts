@@ -25,7 +25,7 @@ router.post('/',hasPermission(EPermission.BADGES_CREATE), async(req, res) =>{
     try{
         const badgeData: IBadge & { requirements?: string }= req.body; 
         
-        if(!badgeData){
+        if(!badgeData || Object.keys(badgeData).length == 0){
             return res.status(400).json({ error: "Missing badge data" });
         }
 
