@@ -4,6 +4,8 @@ import { LoggingService } from "../../services/LoggingService";
 import { authenticationMiddleware } from "../../middleware/auth.middleware";
 import BadgeService from "../../services/BadgeService";
 import IBadge from "../../models/interfaces/IBadge.interface";
+import { EPermission } from "../../models/enums/EPermission.enum";
+import { hasPermission } from "../../middleware/permission.middleware";
 
 const router = Router();
 const logger = Singleton.getInstance(LoggingService);
@@ -19,9 +21,9 @@ router.use(authenticationMiddleware);
  * @returns 400 - Missing or invalid badge data
  * @returns 500 - Internal server error
  */
-router.post('/', async(req, res) =>{
+router.post('/',hasPermission(EPermission.BADGES_CREATE), async(req, res) =>{
     try{
-        const badgeData: IBadge = req.body; 
+        const badgeData: IBadge & { requirements?: string }= req.body; 
         
         if(!badgeData){
             return res.status(400).json({ error: "Missing badge data" });
@@ -70,5 +72,52 @@ router.delete('/:badgeId', async(req, res) =>{
         res.status(400).json({ message: "Error deleting Badge", error: (error as Error).message });
     }    
 })
+
+
+/**
+ * @route   GET /api/badges/:badgeId/requirements
+ * @desc    Retrieves the requirements for a single badge.
+ * @access  Private (Requires 'badges:view_requirements' permission)
+ * @param   {string} badgeId - The ID of the badge.
+ * @returns {200: object} The requirements document for the badge.
+ * @returns {500: object} An error object if the database operation fails.
+ */
+router.get('/:badgeId/requirements', hasPermission(EPermission.BADGES_VIEW_REQUIREMENTS), async (req, res) => {
+    try {
+        const { badgeId } = req.params;
+        const requirements = await badgeService.getBadgeRequirement(badgeId);
+        return res.status(200).json(requirements);
+    } catch (error) {
+        logger.error("Error in GET /badges/:badgeId/requirements: ", error);
+        res.status(500).json({ error: "Failed to get badge requirements" });
+    }
+});
+
+/**
+ * @route   PATCH /api/badges/:badgeId/requirements
+ * @desc    Updates the requirements for a single badge.
+ * @access  Private (Requires 'badges:manage_requirements' permission)
+ * @param   {string} badgeId - The ID of the badge.
+ * @body    {object} { requirements: string } - The new requirements text.
+ * @returns {200: object} The updated requirements document.
+ * @returns {400: object} An error object if the request body is invalid.
+ * @returns {500: object} An error object if the database operation fails.
+ */
+router.patch('/:badgeId/requirements', hasPermission(EPermission.BADGES_MANAGE_REQUIREMENTS), async (req, res) => {
+    try {
+        const { badgeId } = req.params;
+        const { requirements } = req.body;
+
+        if (typeof requirements !== 'string') {
+            return res.status(400).json({ message: 'Requirements text is missing or invalid.' });
+        }
+
+        const updated = await badgeService.updateBadgeRequirement(badgeId, requirements);
+        return res.status(200).json(updated);
+    } catch (error) {
+        logger.error("Error in PATCH /badges/:badgeId/requirements: ", error);
+        res.status(500).json({ error: "Failed to update badge requirements" });
+    }
+});
 
 export default router;
