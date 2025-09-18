@@ -44,17 +44,21 @@ export class MissionService implements IService {
      * @returns The newly created mission.
      */
     public async createMission(missionData: {
-        document: string;
+        documentPath: string;
+        documentName: string;
         studentId: string;
+        tutorId: string;
         remuneration: number;
         commissionedById: string;
         dateCompleted: Date;
     }): Promise<IMissions> {
-        const { document, studentId, remuneration, commissionedById, dateCompleted } = missionData;
+        const { documentPath, documentName, studentId,tutorId, remuneration, commissionedById, dateCompleted } = missionData;
 
         const newMission = new MMission({
-            document,
+            documentPath,
+            documentName,
             student: new Types.ObjectId(studentId),
+            tutor: new Types.ObjectId(tutorId),
             remuneration,
             commissionedBy: new Types.ObjectId(commissionedById),
             dateCompleted,

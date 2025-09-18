@@ -4,7 +4,8 @@ import { EMissionStatus } from '../../models/enums/EMissions.enum';
 
 export  interface IMissions extends Document{
     _id: Types.ObjectId;
-    document: string; // URL or reference to the document/mission details
+    documentPath: string; // To store the file path
+    documentName: string; // To store the original filename // URL or reference to the document/mission details
     student: Types.ObjectId; // The ID of the student this bundle is for, or the populated student object
     tutor: Types.ObjectId; //Id of tutor who wrote the mission
     createdAt: Date; // Automatically managed by timestamps
@@ -17,10 +18,13 @@ export  interface IMissions extends Document{
 }
 
 const MissionSchema = new Schema<IMissions>({
-  document: {
-    type: String,
+  documentPath: {
+    type: String, 
     required: true,
-    trim: true
+  },
+  documentName: {
+      type: String,
+      required: true,
   },
   student: {
     type: Schema.Types.ObjectId,
@@ -64,4 +68,3 @@ const MissionSchema = new Schema<IMissions>({
 const MMission = model<IMissions>('Mission', MissionSchema);
 
 export default MMission;
-

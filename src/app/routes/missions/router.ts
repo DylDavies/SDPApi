@@ -6,8 +6,38 @@ import { Types } from "mongoose";
 import { hasPermission } from "../../middleware/permission.middleware";
 import { EPermission } from "../../models/enums/EPermission.enum";
 import MissionsService from "../../services/MissionsService";
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = Router();
+
+// --- Setup Multer for File Uploads ---
+const uploadDir = 'uploads/missions';
+
+// Ensure the upload directory exists
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir)
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({ 
+    storage: storage,
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === "application/pdf") {
+            cb(null, true);
+        } else {
+            cb(new Error("Only PDF files are allowed!"));
+        }
+    }
+});
 
 // All mission routes require a user to be logged in.
 router.use(authenticationMiddleware);
@@ -43,26 +73,31 @@ router.get("/:missionId", hasPermission(EPermission.MISSIONS_VIEW), async (req, 
     }
 });
 
-// POST /api/missions - Create a new mission
-router.post("/", hasPermission(EPermission.MISSIONS_CREATE), async (req, res) => {
+// POST /api/missions - Create a new mission with a file upload
+router.post("/", upload.single('document'), async (req, res) => {
     try {
-        const { document, studentId, remuneration, dateCompleted } = req.body;
-        const commissionedBy = req.user as IPayloadUser;
-
-        if (!document || !studentId || !remuneration || !dateCompleted) {
-            return res.status(400).send("Missing required fields: document, studentId, remuneration, dateCompleted");
+        if (!req.file) {
+            return res.status(400).send("No file uploaded.");
+        }
+        if (!req.body || typeof req.body !== 'object') {
+            return res.status(400).send("Invalid request body");
         }
         
-        if (!Types.ObjectId.isValid(studentId)) {
-            return res.status(400).send("Invalid student ID format.");
+        const { studentId, tutorId, remuneration, dateCompleted } = req.body;
+        const commissionedBy = req.user as IPayloadUser;
+
+        if (!studentId || !tutorId || !remuneration || !dateCompleted) {
+            return res.status(400).send("Missing required fields");
         }
 
         const newMission = await MissionsService.createMission({
-            document,
+            documentPath: req.file.path,
+            documentName: req.file.originalname,
             studentId,
-            remuneration,
+            tutorId,
+            remuneration: Number(remuneration), // Convert string to number
             commissionedById: commissionedBy.id,
-            dateCompleted
+            dateCompleted: new Date(dateCompleted) // Convert string to Date
         });
         res.status(201).json(newMission);
     } catch (error) {
@@ -134,5 +169,20 @@ router.delete("/:missionId", hasPermission(EPermission.MISSIONS_DELETE), async (
         res.status(500).json({ message: "Error deleting mission", error: (error as Error).message });
     }
 });
+
+// GET /api/missions/document/:filename - Download a mission document
+router.get("/document/:filename", (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.join(uploadDir, filename);
+
+    fs.access(filePath, fs.constants.F_OK, (err) => {
+        if (err) {
+            return res.status(404).send('File not found.');
+        }
+
+        res.sendFile(path.resolve(filePath));
+    });
+});
+
 
 export default router;

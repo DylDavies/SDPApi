@@ -1,138 +1,155 @@
 import { MissionService } from '../../src/app/services/MissionsService';
-import { IMissions } from '../../src/app/db/models/MMissions.model';
-import { EMissionStatus } from '../../src/app/models/enums/EMissions.enum';
+import MMission, { IMissions } from '../../src/app/db/models/MMissions.model';
 import { Types } from 'mongoose';
+import { EMissionStatus } from '../../src/app/models/enums/EMissions.enum';
 
-// 1. Correct the path to the model file for the mock
+// Mock the Mongoose model to isolate the service from the database
 jest.mock('../../src/app/db/models/MMissions.model');
 
-// 2. Import the model AFTER it has been mocked.
-// It will now be a Jest mock constructor, not the actual Mongoose model.
-import MMission from '../../src/app/db/models/MMissions.model';
+const mockMissionId = new Types.ObjectId();
 
-// 3. Cast the mocked import to the correct Jest type to resolve TypeScript errors
-const MockMMission = MMission as unknown as jest.Mock;
-
-// 4. Update the helper to generate valid ObjectIds automatically
-const createMockMission = (): IMissions => ({
-  _id: new Types.ObjectId(),
-  document: 'mission_doc.pdf',
+// A sample mission object to be used in tests
+const mockMission: IMissions = {
+  _id: mockMissionId,
+  documentPath: 'path/to/doc.pdf',
+  documentName: 'doc.pdf',
   student: new Types.ObjectId(),
   tutor: new Types.ObjectId(),
   remuneration: 100,
   commissionedBy: new Types.ObjectId(),
-  dateCompleted: new Date('2025-10-01T00:00:00.000Z'),
-  hoursCompleted: 5,
+  hoursCompleted: 2,
+  dateCompleted: new Date(),
   status: EMissionStatus.Active,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-} as IMissions);
+  save: jest.fn().mockResolvedValue(this),
+} as unknown as IMissions;
+
+// A reusable mock for Mongoose's chainable query methods (e.g., .populate().exec())
+const mockQuery = {
+  populate: jest.fn().mockReturnThis(),
+  exec: jest.fn().mockResolvedValue([mockMission]),
+};
 
 describe('MissionService', () => {
   let missionService: MissionService;
 
   beforeEach(() => {
-    missionService = new MissionService();
-    // Clear all mock history and implementations before each test
+    // Reset all mocks before each test to ensure test isolation
     jest.clearAllMocks();
+    
+    // Configure the mock implementations for Mongoose static methods
+    (MMission.find as jest.Mock).mockReturnValue(mockQuery);
+    (MMission.findById as jest.Mock).mockReturnValue(mockQuery);
+    (MMission.findByIdAndUpdate as jest.Mock).mockImplementation(() => Promise.resolve(mockMission)); // General mock
+    (MMission.deleteOne as jest.Mock).mockReturnValue({ exec: jest.fn().mockResolvedValue({ deletedCount: 1 }) } as any);
+
+    missionService = new MissionService();
   });
 
-  // Test suite for getMission method
+  it('should initialize without errors', async () => {
+    await expect(missionService.init()).resolves.toBeUndefined();
+  });
+
   describe('getMission', () => {
-    it('should retrieve all missions and populate related fields', async () => {
-      const mockMissions = [createMockMission()];
+    it('should retrieve all missions with populated fields', async () => {
+      mockQuery.exec.mockResolvedValue([mockMission]);
+      const missions = await missionService.getMission();
 
-        // Create a reusable "query" mock object
-        const exec = jest.fn().mockResolvedValue(mockMissions);
-        const query = {
-        populate: jest.fn().mockReturnThis(), // every call returns the same query
-        exec,
-        };
-
-        // Make find() return the query object
-        (MMission.find as jest.Mock).mockReturnValue(query);
-
-        const missions = await missionService.getMission();
-
-        expect(MMission.find).toHaveBeenCalled();
-        expect(query.populate).toHaveBeenCalledWith('student', 'displayName');
-        expect(query.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
-        expect(exec).toHaveBeenCalled();
-        expect(missions).toEqual(mockMissions);
+      expect(MMission.find).toHaveBeenCalled();
+      expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.exec).toHaveBeenCalled();
+      expect(missions).toEqual([mockMission]);
     });
   });
 
-  // Test suite for getMissionById method
   describe('getMissionById', () => {
     it('should retrieve a single mission by its ID', async () => {
-        const mockMission = createMockMission();
-        const exec = jest.fn().mockResolvedValue(mockMission);
-        const query = {
-        populate: jest.fn().mockReturnThis(),
-        exec,
-        };
+      mockQuery.exec.mockResolvedValue(mockMission);
+      const mission = await missionService.getMissionById(mockMissionId.toHexString());
 
-        (MMission.findById as jest.Mock).mockReturnValue(query);
+      expect(MMission.findById).toHaveBeenCalledWith(mockMissionId.toHexString());
+      expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.exec).toHaveBeenCalled();
+      expect(mission).toEqual(mockMission);
+    });
 
-        const mission = await missionService.getMissionById(mockMission._id.toHexString());
-
-        expect(MMission.findById).toHaveBeenCalledWith(mockMission._id.toHexString());
-        expect(query.populate).toHaveBeenCalledWith('student', 'displayName');
-        expect(query.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
-        expect(exec).toHaveBeenCalled();
-        expect(mission).toEqual(mockMission);
+    it('should return null if no mission is found', async () => {
+      mockQuery.exec.mockResolvedValue(null);
+      const mission = await missionService.getMissionById(new Types.ObjectId().toHexString());
+      expect(mission).toBeNull();
     });
   });
 
-  // Test suite for createMission method
   describe('createMission', () => {
     it('should create and save a new mission', async () => {
       const missionData = {
-        document: 'new_doc.pdf',
+        documentPath: 'new/path/doc.pdf',
+        documentName: 'new_doc.pdf',
         studentId: new Types.ObjectId().toHexString(),
-        tutorId:new Types.ObjectId().toHexString(),
-        remuneration: 150,
+        tutorId: new Types.ObjectId().toHexString(),
+        remuneration: 200,
         commissionedById: new Types.ObjectId().toHexString(),
         dateCompleted: new Date(),
       };
-      const saveMock = jest.fn().mockResolvedValue(true);
-      const missionInstance = { ...missionData, save: saveMock, status: EMissionStatus.Active };
-      // 6. Use the casted MockMMission to call mockImplementation
-      MockMMission.mockImplementation(() => missionInstance);
 
-      const newMission = await missionService.createMission(missionData);
+      const saveSpy = jest.fn().mockResolvedValue(mockMission);
+      (MMission as any).mockImplementation(() => ({
+        save: saveSpy,
+      }));
 
-      expect(MMission).toHaveBeenCalled();
-      expect(saveMock).toHaveBeenCalled();
-      expect(newMission).toHaveProperty('document', missionData.document);
+      await missionService.createMission(missionData);
+
+      expect(MMission).toHaveBeenCalledWith(expect.objectContaining({
+        documentPath: missionData.documentPath,
+        remuneration: missionData.remuneration,
+        status: EMissionStatus.Active,
+      }));
+      expect(saveSpy).toHaveBeenCalled();
     });
   });
 
-  // Test suite for updateMission method
   describe('updateMission', () => {
-    it('should find and update a mission with new data', async () => {
-        const missionId = new Types.ObjectId().toHexString();
-        const updateData: Partial<IMissions> = { remuneration: 200 };
-        (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue({ ...createMockMission(), ...updateData });
+    it('should find and update a mission with the provided data', async () => {
+      const updateData = { remuneration: 500 };
+      const expectedUpdatedMission = { ...mockMission, ...updateData };
+      (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(expectedUpdatedMission);
 
-        const updatedMission = await missionService.updateMission(missionId, updateData);
+      const updatedMission = await missionService.updateMission(mockMissionId.toHexString(), updateData);
 
-        expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(missionId, { $set: updateData }, { new: true });
-        expect(updatedMission?.remuneration).toBe(200);
+      expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
+        mockMissionId.toHexString(),
+        { $set: updateData },
+        { new: true }
+      );
+      expect(updatedMission?.remuneration).toBe(500);
     });
   });
 
-  // Test suite for deleteMission method
+  describe('setMissionStatus', () => {
+    it('should find a mission and update its status', async () => {
+        const newStatus = EMissionStatus.Completed;
+        const expectedUpdatedMission = { ...mockMission, status: newStatus };
+        (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(expectedUpdatedMission);
+        
+        const updatedMission = await missionService.setMissionStatus(mockMissionId.toHexString(), newStatus);
+
+        expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
+            mockMissionId.toHexString(),
+            { $set: { status: newStatus } },
+            { new: true }
+        );
+        expect(updatedMission?.status).toBe(newStatus);
+    });
+  });
+
   describe('deleteMission', () => {
-      it('should delete a mission and return the deleted count', async () => {
-          const missionId = new Types.ObjectId().toHexString();
-          const exec = jest.fn().mockResolvedValue({ deletedCount: 1 });
-          (MMission.deleteOne as jest.Mock).mockReturnValue({ exec });
+    it('should delete a mission and return the correct deleted count', async () => {
+      const result = await missionService.deleteMission(mockMissionId.toHexString());
 
-          const result = await missionService.deleteMission(missionId);
-
-          expect(MMission.deleteOne).toHaveBeenCalledWith({ _id: missionId });
-          expect(result.deletedCount).toBe(1);
-      });
+      expect(MMission.deleteOne).toHaveBeenCalledWith({ _id: mockMissionId.toHexString() });
+      expect(result).toEqual({ deletedCount: 1 });
+    });
   });
 });
+

@@ -6,9 +6,10 @@ export interface IPopulatedStudent {
   displayName: string;
 };
 
-export default interface IMissions{
+export interface IMissions{
     _id: string;
-    document: string;
+    documentId: string;
+    documentName: string;
     student: string | IPopulatedStudent; // The ID of the student this bundle is for, or the populated student object
     tutor: string | IPopulatedStudent;
     createdAt: Date;
