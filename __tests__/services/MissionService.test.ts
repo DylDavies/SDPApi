@@ -84,6 +84,7 @@ describe('MissionService', () => {
   describe('createMission', () => {
     it('should create and save a new mission', async () => {
       const missionData = {
+        bundleId: new Types.ObjectId().toHexString(),
         documentPath: 'new/path/doc.pdf',
         documentName: 'new_doc.pdf',
         studentId: new Types.ObjectId().toHexString(),

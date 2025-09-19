@@ -37,6 +37,25 @@ export class MissionService implements IService {
             .populate('commissionedBy', 'displayName')
             .exec();
     }
+    /**
+     * Finds all missions assigned to a specific student.
+     * @param studentId The ID of the student.
+     * @returns A promise that resolves to an array of the student's missions.
+     */
+    public async getMissionsByStudentId(studentId: string): Promise<IMissions[]> {
+        return MMission.find({ student: studentId })
+            .populate('student', 'displayName')
+            .populate('tutor', 'displayName')
+            .populate('commissionedBy', 'displayName')
+            .exec();
+    }
+    public async getMissionsByBundleId(bundleId: string): Promise<IMissions[]> {
+        return MMission.find({ bundleId: bundleId })
+            .populate('student', 'displayName')
+            .populate('tutor', 'displayName')
+            .populate('commissionedBy', 'displayName')
+            .exec();
+    }
 
     /**
      * Creates a new mission.
@@ -44,6 +63,7 @@ export class MissionService implements IService {
      * @returns The newly created mission.
      */
     public async createMission(missionData: {
+        bundleId: string;
         documentPath: string;
         documentName: string;
         studentId: string;
@@ -52,9 +72,10 @@ export class MissionService implements IService {
         commissionedById: string;
         dateCompleted: Date;
     }): Promise<IMissions> {
-        const { documentPath, documentName, studentId,tutorId, remuneration, commissionedById, dateCompleted } = missionData;
+        const {bundleId, documentPath, documentName, studentId,tutorId, remuneration, commissionedById, dateCompleted } = missionData;
 
         const newMission = new MMission({
+            bundleId: new Types.ObjectId(bundleId),
             documentPath,
             documentName,
             student: new Types.ObjectId(studentId),

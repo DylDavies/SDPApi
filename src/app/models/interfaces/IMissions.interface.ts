@@ -1,20 +1,18 @@
 
 import { EMissionStatus } from "../enums/EMissions.enum";
+import { IPopulatedUser } from "./IBundle.interface";
 
-export interface IPopulatedStudent {
-  _id: string;
-  displayName: string;
-};
 
 export interface IMissions{
     _id: string;
+    bundleId: string;
     documentId: string;
     documentName: string;
-    student: string | IPopulatedStudent; // The ID of the student this bundle is for, or the populated student object
-    tutor: string | IPopulatedStudent;
+    student: string | IPopulatedUser; // The ID of the student this bundle is for, or the populated student object
+    tutor: string | IPopulatedUser;
     createdAt: Date;
     remuneration: number;
-    commissionedBy: string | IPopulatedStudent;
+    commissionedBy: string | IPopulatedUser;
     hoursCompleted: number;
     dateCompleted: Date;
     status: EMissionStatus;

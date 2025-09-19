@@ -4,6 +4,7 @@ import { EMissionStatus } from '../../models/enums/EMissions.enum';
 
 export  interface IMissions extends Document{
     _id: Types.ObjectId;
+    bundleId: Types.ObjectId; 
     documentPath: string; // To store the file path
     documentName: string; // To store the original filename // URL or reference to the document/mission details
     student: Types.ObjectId; // The ID of the student this bundle is for, or the populated student object
@@ -18,6 +19,11 @@ export  interface IMissions extends Document{
 }
 
 const MissionSchema = new Schema<IMissions>({
+  bundleId: { 
+    type: Schema.Types.ObjectId,
+    ref: 'Bundle',
+    required: true
+  },
   documentPath: {
     type: String, 
     required: true,

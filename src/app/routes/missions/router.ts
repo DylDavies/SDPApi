@@ -51,6 +51,32 @@ router.get("/", hasPermission(EPermission.MISSIONS_VIEW), async (req, res) => {
         res.status(500).json({ message: "Error fetching missions", error: (error as Error).message });
     }
 });
+// GET /api/missions/student/:studentId - Get all missions for a specific student
+router.get("/student/:studentId", hasPermission(EPermission.MISSIONS_VIEW), async (req, res) => {
+    try {
+        const { studentId } = req.params;
+        if (!Types.ObjectId.isValid(studentId)) {
+            return res.status(400).send("Invalid student ID format.");
+        }
+
+        const missions = await MissionsService.getMissionsByStudentId(studentId);
+        res.status(200).json(missions);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching student missions", error: (error as Error).message });
+    }
+});
+// GET /api/missions/bundle/:bundleId - Get all missions for a specific bundle
+router.get("/bundle/:bundleId", hasPermission(EPermission.MISSIONS_VIEW), async (req, res) => {
+    try {
+        const { bundleId } = req.params;
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
+        }
+        res.status(200).json(await MissionsService.getMissionsByBundleId(bundleId));
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching bundle missions", error: (error as Error).message });
+    }
+});
 
 // GET /api/missions/:missionId - Get a single mission by its ID
 router.get("/:missionId", hasPermission(EPermission.MISSIONS_VIEW), async (req, res) => {
@@ -82,15 +108,16 @@ router.post("/", upload.single('document'), async (req, res) => {
         if (!req.body || typeof req.body !== 'object') {
             return res.status(400).send("Invalid request body");
         }
-        
-        const { studentId, tutorId, remuneration, dateCompleted } = req.body;
+        console.log('Received mission data:', req.body);
+        const {bundleId, studentId, tutorId, remuneration, dateCompleted } = req.body;
         const commissionedBy = req.user as IPayloadUser;
 
-        if (!studentId || !tutorId || !remuneration || !dateCompleted) {
+        if (!bundleId || !studentId || !tutorId || !remuneration || !dateCompleted) {
             return res.status(400).send("Missing required fields");
         }
 
         const newMission = await MissionsService.createMission({
+            bundleId,
             documentPath: req.file.path,
             documentName: req.file.originalname,
             studentId,
