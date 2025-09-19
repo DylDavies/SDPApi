@@ -5,6 +5,7 @@ export enum EExtraWorkStatus {
     InProgress = 'In Progress',
     Completed = 'Completed',
     Approved = 'Approved',
+    Denied = 'Denied' // Added the new Denied status
 }
 
 // Interface for the extra work document

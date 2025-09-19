@@ -43,7 +43,7 @@ router.post("/", hasPermission(EPermission.EXTRA_WORK_CREATE), async (req, res) 
         const creator = req.user as IPayloadUser;
 
         if (!studentId || !commissionerId || !workType || !details || remuneration === undefined) {
-            return res.status(400).send("Missing required fields: studentId, commissionerId, workType, details, remuneration");
+            return res.status(400).json({ message: "Missing required fields: studentId, commissionerId, workType, details, remuneration" });
         }
 
         const newExtraWork = await extraWorkService.createExtraWork(creator.id, studentId, commissionerId, workType, details, remuneration);
@@ -59,21 +59,21 @@ router.patch("/:workId/complete", hasPermission(EPermission.EXTRA_WORK_EDIT), as
         const { dateCompleted } = req.body;
 
         if (!dateCompleted) {
-            return res.status(400).send("The 'dateCompleted' field is required.");
+            return res.status(400).json({ message: "The 'dateCompleted' field is required." });
         }
 
         if (!Types.ObjectId.isValid(workId)) {
-            return res.status(400).send("Invalid work ID format.");
+            return res.status(400).json({ message: "Invalid work ID format." });
         }
 
         const date = new Date(dateCompleted);
         if (isNaN(date.getTime())) {
-            return res.status(400).send("Invalid date format for 'dateCompleted'.");
+            return res.status(400).json({ message: "Invalid date format for 'dateCompleted'." });
         }
 
         const updatedWork = await extraWorkService.completeExtraWork(workId, date);
         if (!updatedWork) {
-            return res.status(404).send("Extra work entry not found.");
+            return res.status(404).json({ message: "Extra work entry not found." });
         }
         res.status(200).json(updatedWork);
     } catch (error) {
@@ -88,21 +88,21 @@ router.patch("/:workId/status", hasPermission(EPermission.EXTRA_WORK_APPROVE), a
         const { status } = req.body;
 
         if (!status) {
-            return res.status(400).send("The 'status' field is required.");
+            return res.status(400).json({ message: "The 'status' field is required." });
         }
 
         if (!Types.ObjectId.isValid(workId)) {
-            return res.status(400).send("Invalid work ID format.");
+            return res.status(400).json({ message: "Invalid work ID format." });
         }
 
         const validStatuses = Object.values(EExtraWorkStatus);
         if (!validStatuses.includes(status)) {
-            return res.status(400).send(`Invalid status. Must be one of: ${validStatuses.join(", ")}`);
+            return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(", ")}` });
         }
 
         const updatedWork = await extraWorkService.setExtraWorkStatus(workId, status);
         if (!updatedWork) {
-            return res.status(404).send("Extra work entry not found.");
+            return res.status(404).json({ message: "Extra work entry not found." });
         }
         res.status(200).json(updatedWork);
     } catch (error) {

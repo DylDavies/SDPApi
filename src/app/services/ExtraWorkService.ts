@@ -11,25 +11,11 @@ export class ExtraWorkService implements IService {
         return Promise.resolve();
     }
 
-    /**
-     * Creates a new extra work entry.
-     * @param userId The user ID of the person submitting the work.
-     * @param studentId The user ID of the student the work is for.
-     * @param commissionerId The user ID of the person who commissioned the work.
-     * @param workType The type of work.
-     * @param details Details about the work.
-     * @param remuneration The remuneration for the work.
-     * @returns The newly created extra work entry.
-     */
     public async createExtraWork(userId: string, studentId: string, commissionerId: string, workType: string, details: string, remuneration: number): Promise<IExtraWork> {
-        const userIdObject = new Types.ObjectId(userId);
-        const studentIdObject = new Types.ObjectId(studentId);
-        const commissionerIdObject = new Types.ObjectId(commissionerId);
-
         const newExtraWork = new MExtraWork({
-            userId: userIdObject,
-            studentId: studentIdObject,
-            commissionerId: commissionerIdObject,
+            userId: new Types.ObjectId(userId),
+            studentId: new Types.ObjectId(studentId),
+            commissionerId: new Types.ObjectId(commissionerId),
             workType,
             details,
             remuneration
@@ -38,6 +24,7 @@ export class ExtraWorkService implements IService {
         await newExtraWork.save();
         return newExtraWork;
     }
+
     public async getExtraWork(): Promise<IExtraWork[]> {
         return MExtraWork.find()
             .populate('userId', 'displayName')
@@ -45,18 +32,15 @@ export class ExtraWorkService implements IService {
             .populate('commissionerId', 'displayName')
             .exec();
     }
+
     public async completeExtraWork(workId: string, dateCompleted: Date): Promise<IExtraWork | null> {
         return MExtraWork.findByIdAndUpdate(
             workId,
-            {
-                $set: {
-                    dateCompleted: dateCompleted,
-                    status: EExtraWorkStatus.Completed
-                }
-            },
+            { $set: { dateCompleted, status: EExtraWorkStatus.Completed } },
             { new: true }
         );
     }
+
     public async setExtraWorkStatus(workId: string, status: EExtraWorkStatus): Promise<IExtraWork | null> {
         return MExtraWork.findByIdAndUpdate(
             workId,
@@ -71,9 +55,6 @@ export class ExtraWorkService implements IService {
             .populate('commissionerId', 'displayName')
             .exec();
     }
-    
 }
-
-
 
 export default Singleton.getInstance(ExtraWorkService);
