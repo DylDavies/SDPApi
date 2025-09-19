@@ -6,6 +6,8 @@ import { ELeave } from '../../models/enums/ELeave.enum';
 import MProficiencies, { IProficiencyDocument } from './MProficiencies.model';
 import { Theme } from '../../models/types/theme.type';
 import { EPermission } from '../../models/enums/EPermission.enum';
+import IBadge from '../../models/interfaces/IBadge.interface';
+import MBadge from './MBadge.model';
 
 
 export interface IUser extends Document {
@@ -24,6 +26,7 @@ export interface IUser extends Document {
     proficiencies: IProficiencyDocument[];
     theme: Theme;
     availability?: number;
+    badges?: IBadge[];
 }
 
 export interface IUserWithPermissions extends IUser {
@@ -36,6 +39,8 @@ const LeaveSchema = new Schema<ILeave>({
     endDate: { type: Date, required: true },
     approved: { type: String, enum: Object.values(ELeave), default: ELeave.Pending }
 }, { timestamps: true });
+
+const badgeSchemaUser  = MBadge.schema;
 
 const UserSchema = new Schema<IUser>({
     googleId: { type: String, required: true, unique: true },
@@ -68,7 +73,8 @@ const UserSchema = new Schema<IUser>({
     availability:{
         type: Number,
         default: 0
-    }
+    },
+    badges: [badgeSchemaUser],
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);

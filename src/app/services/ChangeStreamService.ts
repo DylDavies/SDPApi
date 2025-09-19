@@ -8,7 +8,7 @@ import { EServiceLoadPriority } from '../models/enums/EServiceLoadPriority.enum'
 import { ESocketMessage } from '../models/enums/ESocketMessage.enum';
 import MProficiencies from '../db/models/MProficiencies.model';
 import MSidebar from '../db/models/MSidebar.model';
-
+import MBadge from '../db/models/MBadge.model';
 /**
  * Listens to MongoDB change streams and broadcasts events via the SocketService.
  */
@@ -50,6 +50,11 @@ export class ChangeStreamService implements IService {
                 this.logger.info(`Change detected in 'SidebarItem' collection: ${ change }`);
                 this.socketService.broadcastToTopic(ESocketMessage.SidebarUpdated, { change });
             })
+
+            MBadge.watch().on('change', (change) =>{
+                this.logger.info(`Change detected in 'badges' collection: ${change.operationType}`);
+                this.socketService.broadcastToTopic(ESocketMessage.BadgesUpdated, { change });
+            });
 
             this.logger.info('Now watching database collections for changes...');
         } catch (error) {

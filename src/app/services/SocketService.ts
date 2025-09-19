@@ -18,7 +18,8 @@ export class SocketService {
     private logger = Singleton.getInstance(LoggingService);
 
     private topicPermissions: { [topic in ESocketMessage]?: EPermission } = {
-        [ESocketMessage.UsersUpdated]: EPermission.USERS_VIEW
+        [ESocketMessage.UsersUpdated]: EPermission.USERS_VIEW,
+        [ESocketMessage.BadgesUpdated]: EPermission.BADGES_VIEW, // users wanting to view badge collection will get the update
     };
 
     /**
