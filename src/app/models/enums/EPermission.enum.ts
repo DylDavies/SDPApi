@@ -35,5 +35,13 @@ export enum EPermission {
     // Proficiency Management Permissions
     PROFICIENCIES_MANAGE = 'proficiencies:manage',
 
-    NOTIFICATIONS_VIEW = 'notifications:view'
+    // Badge Management Permissions
+    BADGES_CREATE = 'badges:create',
+    BADGES_MANAGE = 'badges:manage',
+    BADGES_VIEW = 'badges:view',
+    BADGES_VIEW_REQUIREMENTS = 'badges:view_requirements',
+    BADGES_MANAGE_REQUIREMENTS = 'badges:manage_requirements',
+
+    NOTIFICATIONS_VIEW = 'notifications:view',
+
 }

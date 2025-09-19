@@ -3,5 +3,6 @@ export enum ESocketMessage {
     CurrentUserUpdate = "current-user-updated",
     RolesUpdated = "roles-updated",
     ProficienciesUpdated = "proficiencies-updated",
-    NotificationsUpdated = "notifications-updated"
+    BadgesUpdated = "badges-updated",
+    NotificationsUpdated = "notifications-updated",
 }
