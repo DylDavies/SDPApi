@@ -251,8 +251,9 @@ describe('Missions Router', () => {
     });
 
     describe('GET /api/missions/document/:filename', () => {
-        // FIX: Define the upload directory inside `src` to match the router's logic
-        const uploadDir = path.resolve(process.cwd(), 'src/app/routes/missions/uploads/missions');
+        // FIX: The router resolves its path from its location in `src`.
+        // The test needs to create the file in the location the router expects.
+        const uploadDir = path.resolve(process.cwd(), 'src/uploads/missions');
         const testFilename = 'test-download.pdf';
         const testFilePath = path.join(uploadDir, testFilename);
 
@@ -263,8 +264,19 @@ describe('Missions Router', () => {
 
         afterAll(() => {
             fs.unlinkSync(testFilePath);
-            // Attempt to remove the directory, ignore errors if it fails (e.g., not empty)
-            try { fs.rmdirSync(uploadDir, { recursive: true }); } catch (e) {}
+            // Attempt to remove the directories if they are empty
+            try { fs.rmdirSync(uploadDir); } catch (e) {}
+            try { fs.rmdirSync(path.resolve(process.cwd(), 'src/uploads')); } catch (e) {}
+        });
+
+        it('should download a file successfully', async () => {
+            const res = await request(app).get(`/api/missions/document/${testFilename}`);
+            
+            expect(res.status).toBe(200);
+            // Use stringContaining to be more flexible with content-type headers (e.g., charset)
+            expect(res.headers['content-type']).toEqual(expect.stringContaining('application/pdf'));
+            // Use res.text for simple text content checks
+            expect(res.text).toBe('file content');
         });
 
         it('should return 404 if file does not exist', async () => {
