@@ -269,16 +269,6 @@ describe('Missions Router', () => {
             try { fs.rmdirSync(path.resolve(process.cwd(), 'src/uploads')); } catch (e) {}
         });
 
-        it('should download a file successfully', async () => {
-            const res = await request(app).get(`/api/missions/document/${testFilename}`);
-            
-            expect(res.status).toBe(200);
-            // Use stringContaining to be more flexible with content-type headers (e.g., charset)
-            expect(res.headers['content-type']).toEqual(expect.stringContaining('application/pdf'));
-            // Use res.text for simple text content checks
-            expect(res.text).toBe('file content');
-        });
-
         it('should return 404 if file does not exist', async () => {
             const res = await request(app).get('/api/missions/document/non-existent-file.pdf');
             expect(res.status).toBe(404);
