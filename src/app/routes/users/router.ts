@@ -223,5 +223,36 @@ router.patch("/:userId/availability", hasPermission(EPermission.PROFILE_PAGE_VIE
     }
 });
 
+// POST /api/users/:userId/badges - Add a badge to a user
+router.post("/:userId/badges", hasPermission(EPermission.BADGES_MANAGE), async (req, res) =>{
+    try{
+        const { userId } = req.params;
+        const { badgeData } = req.body;
+
+        if(!badgeData){
+            return res.status(400).send("badge data is required.");
+        }
+
+        const updatedUser = await userService.addBadgeToUser(userId, badgeData);
+        res.status(200).json(updatedUser);
+    } 
+    catch(error){
+        res.status(403).json({ message: "Error adding badge", error: (error as Error).message });
+    }
+});
+
+// DELETE /api/users/:userId/badges/:badgeId - Remove a badge from a user
+router.delete("/:userId/badges/:badgeId", hasPermission(EPermission.BADGES_MANAGE), async (req, res) =>{
+    try{
+        const { userId, badgeId } = req.params;
+        
+        const updatedUser = await userService.removeBadgeFromUser(userId, badgeId);
+        res.status(200).json(updatedUser);
+    } 
+    catch(error){
+        res.status(403).json({ message: "Error removing badge", error: (error as Error).message });
+    }
+});
+
 
 export default router;
