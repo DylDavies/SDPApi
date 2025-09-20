@@ -6,7 +6,7 @@ import { IPopulatedUser } from "./IBundle.interface";
 export interface IMissions{
     _id: string;
     bundleId: string;
-    documentId: string;
+    documentPath: string;
     documentName: string;
     student: string | IPopulatedUser; // The ID of the student this bundle is for, or the populated student object
     tutor: string | IPopulatedUser;

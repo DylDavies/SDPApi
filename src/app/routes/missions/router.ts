@@ -108,10 +108,11 @@ router.post("/", upload.single('document'), async (req, res) => {
         if (!req.body || typeof req.body !== 'object') {
             return res.status(400).send("Invalid request body");
         }
+        
         const {bundleId, studentId, tutorId, remuneration, dateCompleted } = req.body;
         const commissionedBy = req.user as IPayloadUser;
 
-        if (!bundleId || !studentId || !tutorId || !remuneration || !dateCompleted) {
+        if (!studentId || !tutorId || !remuneration || !dateCompleted) {
             return res.status(400).send("Missing required fields");
         }
 
@@ -190,7 +191,7 @@ router.delete("/:missionId", hasPermission(EPermission.MISSIONS_DELETE), async (
         if (result.deletedCount === 0) {
             return res.status(404).send("Mission not found.");
         }
-        res.status(204).send(); // 204 No Content for successful deletion
+        res.status(204).send(); 
     } catch (error) {
         res.status(500).json({ message: "Error deleting mission", error: (error as Error).message });
     }
@@ -199,14 +200,15 @@ router.delete("/:missionId", hasPermission(EPermission.MISSIONS_DELETE), async (
 // GET /api/missions/document/:filename - Download a mission document
 router.get("/document/:filename", (req, res) => {
     const { filename } = req.params;
-    const filePath = path.join(uploadDir, filename);
+    
+    const filePath = path.join(__dirname, '../../..', 'uploads/missions', filename);
 
     fs.access(filePath, fs.constants.F_OK, (err) => {
         if (err) {
             return res.status(404).send('File not found.');
         }
 
-        res.sendFile(path.resolve(filePath));
+        res.sendFile(filePath); 
     });
 });
 
