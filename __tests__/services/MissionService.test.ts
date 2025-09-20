@@ -11,6 +11,7 @@ const mockMissionId = new Types.ObjectId();
 // A sample mission object to be used in tests
 const mockMission: IMissions = {
   _id: mockMissionId,
+  bundleId: new Types.ObjectId(),
   documentPath: 'path/to/doc.pdf',
   documentName: 'doc.pdf',
   student: new Types.ObjectId(),
@@ -153,4 +154,3 @@ describe('MissionService', () => {
     });
   });
 });
-

@@ -108,7 +108,6 @@ router.post("/", upload.single('document'), async (req, res) => {
         if (!req.body || typeof req.body !== 'object') {
             return res.status(400).send("Invalid request body");
         }
-        console.log('Received mission data:', req.body);
         const {bundleId, studentId, tutorId, remuneration, dateCompleted } = req.body;
         const commissionedBy = req.user as IPayloadUser;
 

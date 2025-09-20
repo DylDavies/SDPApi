@@ -28,6 +28,7 @@ app.use('/api/missions', missionsRouter);
 
 const mockMission = {
     _id: new Types.ObjectId(),
+    bundleId: new Types.ObjectId(),
     documentPath: 'uploads/missions/document-123.pdf',
     documentName: 'mission.pdf',
     student: new Types.ObjectId(),
@@ -122,6 +123,7 @@ describe('Missions Router', () => {
 
             const res = await request(app)
                 .post('/api/missions')
+                .field('bundleId', '60c72b2f9b1d8e001f8e8b8a') // <-- FIX: Added the missing bundleId
                 .field('studentId', '60c72b2f9b1d8e001f8e8b8b')
                 .field('tutorId', '60c72b2f9b1d8e001f8e8b8c')
                 .field('remuneration', '200')
@@ -275,4 +277,3 @@ describe('Missions Router', () => {
         });
     });
 });
-
