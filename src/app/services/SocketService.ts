@@ -51,11 +51,13 @@ export class SocketService {
             });
 
             socket.on('subscribe', async (topic: ESocketMessage) => {
-                if (user && await this.hasPermission(user, topic)) {
-                    socket.join(topic);
-                    this.logger.info(`Client ${socket.id} subscribed to topic: ${topic}`);
-                } else {
-                    this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to lack of permissions`);
+                if (user) {
+                    if (await this.hasPermission(user, topic)) {
+                        socket.join(topic);
+                        this.logger.info(`Client ${socket.id} subscribed to topic: ${topic}`);
+                    } else {
+                        this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to lack of permissions`);
+                    }
                 }
             });
 
