@@ -262,12 +262,12 @@ describe('Missions Router', () => {
             fs.writeFileSync(testFilePath, 'file content');
         });
 
-        afterAll(() => {
+        /*afterAll(() => {
             fs.unlinkSync(testFilePath);
             // Attempt to remove the directories if they are empty
             try { fs.rmdirSync(uploadDir); } catch (e) {}
             try { fs.rmdirSync(path.resolve(process.cwd(), 'src/uploads')); } catch (e) {}
-        });
+        });*/
 
         it('should return 404 if file does not exist', async () => {
             const res = await request(app).get('/api/missions/document/non-existent-file.pdf');
