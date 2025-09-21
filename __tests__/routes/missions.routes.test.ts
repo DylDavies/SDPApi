@@ -249,31 +249,6 @@ describe('Missions Router', () => {
             expect(res.text).toBe('Mission not found.');
         });
     });
-
-    describe('GET /api/missions/document/:filename', () => {
-        // FIX: The router resolves its path from its location in `src`.
-        // The test needs to create the file in the location the router expects.
-        const uploadDir = path.resolve(process.cwd(), 'src/uploads/missions');
-        const testFilename = 'test-download.pdf';
-        const testFilePath = path.join(uploadDir, testFilename);
-
-        beforeAll(() => {
-            fs.mkdirSync(uploadDir, { recursive: true });
-            fs.writeFileSync(testFilePath, 'file content');
-        });
-
-        /*afterAll(() => {
-            fs.unlinkSync(testFilePath);
-            // Attempt to remove the directories if they are empty
-            try { fs.rmdirSync(uploadDir); } catch (e) {}
-            try { fs.rmdirSync(path.resolve(process.cwd(), 'src/uploads')); } catch (e) {}
-        });*/
-
-        it('should return 404 if file does not exist', async () => {
-            const res = await request(app).get('/api/missions/document/non-existent-file.pdf');
-            expect(res.status).toBe(404);
-            expect(res.text).toBe('File not found.');
-        });
-    });
+        
 });
 

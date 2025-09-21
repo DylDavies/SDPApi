@@ -1,276 +1,213 @@
-import request from 'supertest';
-import express from 'express';
-import missionsRouter from '../../src/app/routes/missions/router';
-import MissionsService from "../../src/app/services/MissionsService";
+import { MissionService } from '../../src/app/services/MissionsService';
+import MMission from '../../src/app/db/models/MMissions.model';
 import { Types } from 'mongoose';
-import path from 'path';
-import fs from 'fs';
-import { IMissions } from "../../src/app/models/interfaces/IMissions.interface";
-import { EMissionStatus }from '../../src/app/models/enums/EMissions.enum';
+import { EMissionStatus } from '../../src/app/models/enums/EMissions.enum';
 
-// Mock the services and middleware
-jest.mock('../../src/app/services/MissionsService');
-jest.mock('../../src/app/middleware/auth.middleware', () => ({
-    authenticationMiddleware: (req: any, res: any, next: () => void) => next(),
-}));
-jest.mock('../../src/app/middleware/permission.middleware', () => ({
-    hasPermission: () => (req: any, res: any, next: () => void) => next(),
-}));
+// Mock the entire module
+jest.mock('../../src/app/db/models/MMissions.model');
 
-const app = express();
-app.use(express.json());
-// Add a mock user to the request for the POST endpoint
-app.use((req: any, res, next) => {
-    req.user = { id: 'commissioner123' };
-    next();
-});
-app.use('/api/missions', missionsRouter);
+// Create a mock query object that supports method chaining
+const createMockQuery = (mockData: any) => {
+  return {
+    populate: jest.fn().mockReturnThis(),
+    exec: jest.fn().mockResolvedValue(mockData)
+  };
+};
 
-const mockMission = {
-    _id: new Types.ObjectId(),
-    bundleId: new Types.ObjectId(),
-    documentPath: 'uploads/missions/document-123.pdf',
-    documentName: 'mission.pdf',
-    student: new Types.ObjectId(),
-    tutor: new Types.ObjectId(),
-    remuneration: 150,
-    commissionedBy: new Types.ObjectId(),
-    hoursCompleted: 0,
-    dateCompleted: new Date(),
-    status: EMissionStatus.Active,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-} as unknown as IMissions;
+describe('MissionService', () => {
+  let missionService: MissionService;
 
+  beforeEach(() => {
+    jest.clearAllMocks();
+    missionService = new MissionService();
+  });
 
-describe('Missions Router', () => {
+  describe('getMission', () => {
+    it('should retrieve all missions with populated user data', async () => {
+      const mockMissions = [
+        { _id: new Types.ObjectId(), documentName: 'Mission 1' },
+        { _id: new Types.ObjectId(), documentName: 'Mission 2' }
+      ];
 
-    afterEach(() => {
-        jest.clearAllMocks();
+      // Mock the method chain
+      const mockQuery = createMockQuery(mockMissions);
+      (MMission.find as jest.Mock).mockReturnValue(mockQuery);
+
+      const result = await missionService.getMission();
+
+      expect(MMission.find).toHaveBeenCalled();
+      expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.exec).toHaveBeenCalled();
+      expect(result).toEqual(mockMissions);
     });
+  });
 
-    describe('GET /api/missions', () => {
-        it('should return all missions with a 200 status', async () => {
-            (MissionsService.getMission as jest.Mock).mockResolvedValue([mockMission]);
+  describe('getMissionById', () => {
+    it('should retrieve a mission by ID with populated user data', async () => {
+      const missionId = new Types.ObjectId().toHexString();
+      const mockMission = { _id: missionId, documentName: 'Test Mission' };
 
-            const res = await request(app).get('/api/missions');
+      const mockQuery = createMockQuery(mockMission);
+      (MMission.findById as jest.Mock).mockReturnValue(mockQuery);
 
-            expect(res.status).toBe(200);
-            expect(res.body).toEqual([expect.any(Object)]);
-            expect(MissionsService.getMission).toHaveBeenCalled();
-        });
+      const result = await missionService.getMissionById(missionId);
 
-        it('should return 500 on service error', async () => {
-            (MissionsService.getMission as jest.Mock).mockRejectedValue(new Error('Database error'));
-
-            const res = await request(app).get('/api/missions');
-
-            expect(res.status).toBe(500);
-            expect(res.body.message).toBe('Error fetching missions');
-        });
+      expect(MMission.findById).toHaveBeenCalledWith(missionId);
+      expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.exec).toHaveBeenCalled();
+      expect(result).toEqual(mockMission);
     });
+  });
 
-    describe('GET /api/missions/:missionId', () => {
-        it('should return a single mission with a 200 status', async () => {
-            (MissionsService.getMissionById as jest.Mock).mockResolvedValue(mockMission);
+  describe('getMissionsByStudentId', () => {
+    it('should retrieve missions for a specific student', async () => {
+      const studentId = new Types.ObjectId().toHexString();
+      const mockMissions = [
+        { _id: new Types.ObjectId(), student: studentId, documentName: 'Student Mission' }
+      ];
 
-            const res = await request(app).get(`/api/missions/${mockMission._id}`);
+      const mockQuery = createMockQuery(mockMissions);
+      (MMission.find as jest.Mock).mockReturnValue(mockQuery);
 
-            expect(res.status).toBe(200);
-            expect(res.body).toBeDefined();
-            expect(MissionsService.getMissionById).toHaveBeenCalledWith(mockMission._id.toString());
-        });
+      const result = await missionService.getMissionsByStudentId(studentId);
 
-        it('should return 404 if mission not found', async () => {
-            (MissionsService.getMissionById as jest.Mock).mockResolvedValue(null);
-            const nonExistentId = new Types.ObjectId();
-
-            const res = await request(app).get(`/api/missions/${nonExistentId}`);
-
-            expect(res.status).toBe(404);
-            expect(res.text).toBe('Mission not found.');
-        });
-
-        it('should return 400 for an invalid mission ID', async () => {
-            const res = await request(app).get('/api/missions/invalid-id');
-            expect(res.status).toBe(400);
-            expect(res.text).toBe('Invalid mission ID format.');
-        });
+      expect(MMission.find).toHaveBeenCalledWith({ student: studentId });
+      expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('tutor', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.exec).toHaveBeenCalled();
+      expect(result).toEqual(mockMissions);
     });
+  });
 
-    describe('POST /api/missions', () => {
-        const testPdfPath = path.join(__dirname, 'test.pdf');
+  describe('getMissionsByBundleId', () => {
+    it('should retrieve missions for a specific bundle', async () => {
+      const bundleId = new Types.ObjectId().toHexString();
+      const mockMissions = [
+        { _id: new Types.ObjectId(), bundleId: bundleId, documentName: 'Bundle Mission' }
+      ];
 
-        beforeAll(() => {
-            // Create a dummy PDF file for testing uploads
-            fs.writeFileSync(testPdfPath, 'dummy pdf content');
-        });
+      const mockQuery = createMockQuery(mockMissions);
+      (MMission.find as jest.Mock).mockReturnValue(mockQuery);
 
-        afterAll(() => {
-            // Clean up the dummy file
-            fs.unlinkSync(testPdfPath);
-            // Clean up uploaded files
-             const uploadDir = 'uploads/missions';
-             if (fs.existsSync(uploadDir)) {
-                 fs.readdirSync(uploadDir).forEach((file) => {
-                     fs.unlinkSync(path.join(uploadDir, file));
-                 });
-             }
-        });
+      const result = await missionService.getMissionsByBundleId(bundleId);
 
-        it('should create a mission and return 201 status', async () => {
-            (MissionsService.createMission as jest.Mock).mockResolvedValue(mockMission);
-
-            const res = await request(app)
-                .post('/api/missions')
-                .field('bundleId', '60c72b2f9b1d8e001f8e8b8a')
-                .field('studentId', '60c72b2f9b1d8e001f8e8b8b')
-                .field('tutorId', '60c72b2f9b1d8e001f8e8b8c')
-                .field('remuneration', '200')
-                .field('dateCompleted', new Date().toISOString())
-                .attach('document', testPdfPath);
-
-            expect(res.status).toBe(201);
-            expect(res.body).toBeDefined();
-            expect(MissionsService.createMission).toHaveBeenCalled();
-        });
-
-        it('should return 400 if no file is uploaded', async () => {
-            const res = await request(app)
-                .post('/api/missions')
-                .field('studentId', '60c72b2f9b1d8e001f8e8b8b');
-            
-            expect(res.status).toBe(400);
-            expect(res.text).toBe('No file uploaded.');
-        });
-        
-        it('should return 400 if required fields are missing', async () => {
-            const res = await request(app)
-                .post('/api/missions')
-                .field('studentId', '60c72b2f9b1d8e001f8e8b8b')
-                .attach('document', testPdfPath);
-
-            expect(res.status).toBe(400);
-            expect(res.text).toBe('Missing required fields');
-        });
+      expect(MMission.find).toHaveBeenCalledWith({ bundleId: bundleId });
+      expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('tutor', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.exec).toHaveBeenCalled();
+      expect(result).toEqual(mockMissions);
     });
+  });
 
-    describe('PATCH /api/missions/:missionId', () => {
-        it('should update a mission and return 200 status', async () => {
-            const updateData = { remuneration: 500 };
-            const updatedMission = { ...mockMission, ...updateData };
-            (MissionsService.updateMission as jest.Mock).mockResolvedValue(updatedMission);
+  describe('createMission', () => {
+    it('should create a new mission with valid data', async () => {
+      const missionData = {
+        bundleId: new Types.ObjectId().toHexString(),
+        documentPath: '/path/to/document',
+        documentName: 'Test Document',
+        studentId: new Types.ObjectId().toHexString(),
+        tutorId: new Types.ObjectId().toHexString(),
+        remuneration: 100,
+        commissionedById: new Types.ObjectId().toHexString(),
+        dateCompleted: new Date()
+      };
 
-            const res = await request(app)
-                .patch(`/api/missions/${mockMission._id}`)
-                .send(updateData);
+      const mockMission = {
+        ...missionData,
+        _id: new Types.ObjectId(),
+        save: jest.fn().mockResolvedValue(true)
+      };
 
-            expect(res.status).toBe(200);
-            expect(res.body.remuneration).toBe(500);
-            expect(MissionsService.updateMission).toHaveBeenCalledWith(mockMission._id.toString(), updateData);
-        });
+      // Mock the constructor
+      (MMission as unknown as jest.Mock).mockImplementation(() => mockMission);
 
-        it('should return 404 if mission to update is not found', async () => {
-            (MissionsService.updateMission as jest.Mock).mockResolvedValue(null);
-            const nonExistentId = new Types.ObjectId();
+      const result = await missionService.createMission(missionData);
 
-            const res = await request(app)
-                .patch(`/api/missions/${nonExistentId}`)
-                .send({ remuneration: 500 });
-
-            expect(res.status).toBe(404);
-            expect(res.text).toBe('Mission not found.');
-        });
-
-        it('should return 400 for an invalid mission ID', async () => {
-            const res = await request(app)
-                .patch('/api/missions/invalid-id')
-                .send({ remuneration: 500 });
-
-            expect(res.status).toBe(400);
-            expect(res.text).toBe('Invalid mission ID format.');
-        });
+      expect(MMission).toHaveBeenCalledWith({
+        bundleId: new Types.ObjectId(missionData.bundleId),
+        documentPath: missionData.documentPath,
+        documentName: missionData.documentName,
+        student: new Types.ObjectId(missionData.studentId),
+        tutor: new Types.ObjectId(missionData.tutorId),
+        remuneration: missionData.remuneration,
+        commissionedBy: new Types.ObjectId(missionData.commissionedById),
+        dateCompleted: missionData.dateCompleted,
+        status: EMissionStatus.Active
+      });
+      expect(mockMission.save).toHaveBeenCalled();
+      expect(result).toEqual(mockMission);
     });
+  });
 
-    describe('PATCH /api/missions/:missionId/status', () => {
-        it('should update mission status and return 200 status', async () => {
-            const newStatus = EMissionStatus.Completed;
-            const updatedMission = { ...mockMission, status: newStatus };
-            (MissionsService.setMissionStatus as jest.Mock).mockResolvedValue(updatedMission);
+  describe('updateMission', () => {
+    it('should update a mission with provided data', async () => {
+      const missionId = new Types.ObjectId().toHexString();
+      const updateData = {
+        documentName: 'Updated Document Name',
+        remuneration: 150
+      };
 
-            const res = await request(app)
-                .patch(`/api/missions/${mockMission._id}/status`)
-                .send({ status: newStatus });
+      const mockUpdatedMission = {
+        _id: missionId,
+        ...updateData
+      };
 
-            expect(res.status).toBe(200);
-            expect(res.body.status).toBe(newStatus);
-            expect(MissionsService.setMissionStatus).toHaveBeenCalledWith(mockMission._id.toString(), newStatus);
-        });
-        
-        it('should return 400 for an invalid status value', async () => {
-             const res = await request(app)
-                .patch(`/api/missions/${mockMission._id}/status`)
-                .send({ status: 'invalid-status' });
-            
-            expect(res.status).toBe(400);
-            expect(res.text).toContain('Invalid status');
-        });
+      (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockUpdatedMission);
 
-        it('should return 404 if mission to update status is not found', async () => {
-            (MissionsService.setMissionStatus as jest.Mock).mockResolvedValue(null);
-            const nonExistentId = new Types.ObjectId();
+      const result = await missionService.updateMission(missionId, updateData);
 
-            const res = await request(app)
-                .patch(`/api/missions/${nonExistentId}/status`)
-                .send({ status: EMissionStatus.Completed });
-
-            expect(res.status).toBe(404);
-            expect(res.text).toBe('Mission not found.');
-        });
+      expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
+        missionId,
+        { $set: updateData },
+        { new: true }
+      );
+      expect(result).toEqual(mockUpdatedMission);
     });
-    
-    describe('DELETE /api/missions/:missionId', () => {
-        it('should delete a mission and return 204 status', async () => {
-            (MissionsService.deleteMission as jest.Mock).mockResolvedValue({ deletedCount: 1 });
+  });
 
-            const res = await request(app).delete(`/api/missions/${mockMission._id}`);
+  describe('setMissionStatus', () => {
+    it('should update the status of a mission', async () => {
+      const missionId = new Types.ObjectId().toHexString();
+      const newStatus = EMissionStatus.Completed;
 
-            expect(res.status).toBe(204);
-            expect(MissionsService.deleteMission).toHaveBeenCalledWith(mockMission._id.toString());
-        });
+      const mockUpdatedMission = {
+        _id: missionId,
+        status: newStatus
+      };
 
-        it('should return 404 if mission to delete is not found', async () => {
-            (MissionsService.deleteMission as jest.Mock).mockResolvedValue({ deletedCount: 0 });
-            const nonExistentId = new Types.ObjectId();
+      (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockUpdatedMission);
 
-            const res = await request(app).delete(`/api/missions/${nonExistentId}`);
-            
-            expect(res.status).toBe(404);
-            expect(res.text).toBe('Mission not found.');
-        });
+      const result = await missionService.setMissionStatus(missionId, newStatus);
+
+      expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
+        missionId,
+        { $set: { status: newStatus } },
+        { new: true }
+      );
+      expect(result).toEqual(mockUpdatedMission);
     });
+  });
 
-    describe('GET /api/missions/document/:filename', () => {
-        // FIX: Define the upload directory inside `src` to match the router's logic
-        const uploadDir = path.resolve(process.cwd(), 'src/app/routes/missions/uploads/missions');
-        const testFilename = 'test-download.pdf';
-        const testFilePath = path.join(uploadDir, testFilename);
+  describe('deleteMission', () => {
+    it('should delete a mission and return deletion count', async () => {
+      const missionId = new Types.ObjectId().toHexString();
+      const deleteResult = { deletedCount: 1 };
 
-        beforeAll(() => {
-            fs.mkdirSync(uploadDir, { recursive: true });
-            fs.writeFileSync(testFilePath, 'file content');
-        });
+      // Mock the exec method for deleteOne
+      const mockDeleteQuery = {
+        exec: jest.fn().mockResolvedValue(deleteResult)
+      };
+      (MMission.deleteOne as jest.Mock).mockReturnValue(mockDeleteQuery);
 
-        /*afterAll(() => {
-            fs.unlinkSync(testFilePath);
-            // Attempt to remove the directory, ignore errors if it fails (e.g., not empty)
-            try { fs.rmdirSync(uploadDir, { recursive: true }); } catch (e) {}
-        });*/
+      const result = await missionService.deleteMission(missionId);
 
-        it('should return 404 if file does not exist', async () => {
-            const res = await request(app).get('/api/missions/document/non-existent-file.pdf');
-            expect(res.status).toBe(404);
-            expect(res.text).toBe('File not found.');
-        });
+      expect(MMission.deleteOne).toHaveBeenCalledWith({ _id: missionId });
+      expect(mockDeleteQuery.exec).toHaveBeenCalled();
+      expect(result).toEqual(deleteResult);
     });
+  });
 });

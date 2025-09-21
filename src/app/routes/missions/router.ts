@@ -118,7 +118,7 @@ router.post("/", upload.single('document'), async (req, res) => {
 
         const newMission = await MissionsService.createMission({
             bundleId,
-            documentPath: req.file.path,
+            documentPath: req.file.filename,
             documentName: req.file.originalname,
             studentId,
             tutorId,
@@ -198,19 +198,33 @@ router.delete("/:missionId", hasPermission(EPermission.MISSIONS_DELETE), async (
 });
 
 // GET /api/missions/document/:filename - Download a mission document
-router.get("/document/:filename", (req, res) => {
+/*router.get("/document/:filename", (req, res) => {
     const { filename } = req.params;
     
-    const filePath = path.join(__dirname, '../../..', 'uploads/missions', filename);
+   const filePath = path.join(process.cwd(), 'uploads/missions', filename);
 
     fs.access(filePath, fs.constants.F_OK, (err) => {
         if (err) {
             return res.status(404).send('File not found.');
         }
-
+        res.setHeader("Content-Type", "application/pdf");
         res.sendFile(filePath); 
     });
 });
+
+router.get("/:missionId/document", async (req, res) => {
+  try {
+    const { missionId } = req.params;
+    const mission = await MissionsService.getMissionById(missionId);
+    if (!mission) return res.status(404).send("Mission not found");
+    
+    const filePath = path.join(__dirname, '../../..', 'uploads/missions', mission.documentPath);
+    res.setHeader("Content-Type", "application/pdf");
+    res.sendFile(filePath);
+  } catch (err) {
+    res.status(500).send("Error retrieving document");
+  }
+});*/
 
 
 export default router;
