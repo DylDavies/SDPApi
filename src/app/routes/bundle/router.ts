@@ -6,9 +6,12 @@ import { EBundleStatus } from "../../models/enums/EBundleStatus.enum";
 import { Types } from "mongoose";
 import { hasPermission } from "../../middleware/permission.middleware";
 import { EPermission } from "../../models/enums/EPermission.enum";
+import { LoggingService } from "../../services/LoggingService";
+import { Singleton } from "../../models/classes/Singleton";
 
 const router = Router();
 const bundleService = BundleService;
+const logger = Singleton.getInstance(LoggingService);
 
 // All bundle routes should require a user to be logged in.
 router.use(authenticationMiddleware);
@@ -86,10 +89,11 @@ router.patch("/:bundleId", hasPermission(EPermission.BUNDLES_EDIT), async (req, 
 // POST /api/bundle/:bundleId/subjects - Add a subject to a bundle
 router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), async (req, res) => {
     try {
+        
         const { bundleId } = req.params;
         const subject = req.body;
-
-        if (!subject || !subject.subject || !subject.tutor || subject.hours === undefined) {
+        
+        if (!subject || !subject.subject || !subject.tutor || subject.durationMinutes === undefined) {
             return res.status(400).send("Missing required fields for subject: subject, tutor, hours");
         }
         if (!Types.ObjectId.isValid(bundleId)) {

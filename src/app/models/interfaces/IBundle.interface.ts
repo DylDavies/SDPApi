@@ -22,7 +22,7 @@ export interface IBundleSubject {
   subject: string; // The ID of the subject being taught
   grade: string; // The grade for the subject
   tutor: string | IPopulatedUser; // The ID of the assigned tutor, or the populated tutor object
-  hours: number; // The number of tutoring hours for this subject
+  durationMinutes: number; // The number of tutoring hours for this subject
 }
 
 /**
