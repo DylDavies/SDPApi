@@ -36,12 +36,11 @@ export class SocketService {
 
         this.io.on('connection', (socket: Socket) => {
             this.logger.info(`New client connected: ${socket.id}`);
-            let user: IPayloadUser | null = null;
 
             socket.on('authenticate', (token: string) => {
                 try {
                     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as IPayloadUser;
-                    user = decoded;
+                    let user = decoded;
                     socket.join(user.id);
                     this.logger.info(`Client ${socket.id} authenticated and joined room ${user.id}`);
                 } catch (error) {
@@ -50,12 +49,24 @@ export class SocketService {
                 }
             });
 
-            socket.on('subscribe', async (topic: ESocketMessage) => {
-                if (user && await this.hasPermission(user, topic)) {
-                    socket.join(topic);
-                    this.logger.info(`Client ${socket.id} subscribed to topic: ${topic}`);
-                } else {
-                    this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to lack of permissions`);
+            socket.on('subscribe', async ({topic, token}: {topic: ESocketMessage, token: string}) => {
+                try {
+                    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as IPayloadUser;
+                    let user = decoded;
+
+                    if (user) {
+                        if (await this.hasPermission(user, topic)) {
+                            socket.join(topic);
+                            this.logger.info(`Client ${socket.id} subscribed to topic: ${topic}`);
+                        } else {
+                            this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to lack of permissions`);
+                        }
+                    } else {
+                        this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to being unauthenticated`)
+                    }
+                } catch (error) {
+                    this.logger.error('Socket subscribe error:', error);
+                    socket.disconnect();
                 }
             });
 

@@ -50,7 +50,12 @@ export class ExtraWorkService implements IService {
     }
 
     public async getExtraWorkForUser(userId: string): Promise<IExtraWork[]> {
-        return MExtraWork.find({ userId: new Types.ObjectId(userId) })
+        return MExtraWork.find({
+            $or: [
+                { userId: new Types.ObjectId(userId) },
+                { commissionerId: new Types.ObjectId(userId) }
+            ]
+        })
             .populate('studentId', 'displayName')
             .populate('commissionerId', 'displayName')
             .exec();

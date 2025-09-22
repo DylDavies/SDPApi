@@ -6,6 +6,9 @@ import ExtraWorkService from "../../services/ExtraWorkService";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { EExtraWorkStatus } from "../../db/models/MExtraWork.model";
 import { Types } from "mongoose";
+import UserService from "../../services/UserService";
+import { IUserWithPermissions } from "../../db/models/MUser.model";
+import { EUserType } from "../../models/enums/EUserType.enum";
 
 const router = Router();
 const extraWorkService = ExtraWorkService;
@@ -13,21 +16,23 @@ const extraWorkService = ExtraWorkService;
 // All extrawork routes should require a user to be logged in.
 router.use(authenticationMiddleware);
 
-// GET /api/extrawork - Get all extra work entries
-router.get("/", hasPermission(EPermission.EXTRA_WORK_VIEW), async (req, res) => {
-    try {
-        const workItems = await extraWorkService.getExtraWork();
-        res.status(200).json(workItems);
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching extra work", error: (error as Error).message });
-    }
-});
-
-// GET /api/extrawork/mywork - Get extra work for the currently logged-in user
-router.get("/mywork", async (req, res) => {
+// GET /api/extrawork - Get extra work for the currently logged-in user / all depending on permissions
+router.get("/", hasPermission([EPermission.EXTRA_WORK_VIEW, EPermission.EXTRA_WORK_VIEW_ALL], false), async (req, res) => {
     try {
         // Get the user's ID from the JWT payload
         const user = req.user as IPayloadUser;
+
+        const userWithPermissions = await UserService.getUser(user.id) as IUserWithPermissions;
+
+        const userPermissions = new Set(userWithPermissions.permissions);
+
+        if (userPermissions.has(EPermission.EXTRA_WORK_VIEW_ALL) || userWithPermissions.type == EUserType.Admin) {
+            const workItems = await extraWorkService.getExtraWork();
+
+            res.status(200).json(workItems);
+            return;
+        }
+
         const workItems = await extraWorkService.getExtraWorkForUser(user.id);
         res.status(200).json(workItems);
     } catch (error) {
