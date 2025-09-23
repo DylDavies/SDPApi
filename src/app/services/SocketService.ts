@@ -68,7 +68,9 @@ export class SocketService {
                 } catch (error) {
                     this.logger.error('Socket subscribe error:', error);
                     socket.disconnect();
+                }
             });
+                
 
             socket.on('unsubscribe', (topic: string) => {
                 socket.leave(topic);
