@@ -10,6 +10,7 @@ import { JwtPayload } from 'jsonwebtoken';
 // --- Type Declaration to solve TypeScript error ---
 // This tells TypeScript that our Express Request object can have a 'user' property.
 declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Express {
         interface Request {
             user?: IPayloadUser | JwtPayload;
