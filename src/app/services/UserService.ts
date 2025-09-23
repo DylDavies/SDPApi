@@ -13,6 +13,16 @@ import ISubject from "../models/interfaces/ISubject.interface";
 import { Theme } from "../models/types/theme.type";
 import { IRole } from "../db/models/MRole.model";
 import { EPermission } from "../models/enums/EPermission.enum";
+import IBadge from "../models/interfaces/IBadge.interface";
+import notificationService from "./NotificationService";
+
+const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+};
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -85,15 +95,108 @@ export class UserService implements IService {
     */
     public async updateLeaveRequestStatus(userId: string, leaveId: string, approved: ELeave.Approved | ELeave.Denied): Promise<IUser | null> {
         if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(leaveId)) {
-        this.logger.warn(`Invalid ID string provided to updateLeaveRequestStatus. User ID: "${userId}", Leave ID: "${leaveId}"`);
-        return null;
-    }
+            this.logger.warn(`Invalid ID string provided to updateLeaveRequestStatus. User ID: "${userId}", Leave ID: "${leaveId}"`);
+            return null;
+        }
 
-    return MUser.findOneAndUpdate(
-        { _id: userId, "leave._id": leaveId },
-        { $set: { "leave.$.approved": approved } },
-        { new: true }
-    );
+        const user = await MUser.findOne({ _id: userId, "leave._id": leaveId });
+        if (!user) {
+            this.logger.warn(`User or leave request not found for User ID: "${userId}", Leave ID: "${leaveId}"`);
+            return null;
+        }
+
+        const leaveRequest = user.leave.find(l => l._id.toString() === leaveId);
+        if (!leaveRequest) {
+            // This should theoretically not happen if the query above succeeds, but it's good practice
+            return null; 
+        }
+
+        const status = approved === ELeave.Approved ? 'Approved' : 'Denied';
+        const statusColor = approved === ELeave.Approved ? '#4CAF50' : '#F44336'; // Green for approved, Red for denied
+
+        const html = `
+        <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="color-scheme" content="light dark">
+                <meta name="supported-color-schemes" content="light dark">
+                <style>
+                    body { font-family: Roboto, "Helvetica Neue", sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+                    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+                    .header { background-color: #2855b6; padding: 20px; text-align: center; }
+                    .header img { width: 80px; }
+                    .content { padding: 30px; line-height: 1.6; color: #333; }
+                    .content h1 { font-size: 24px; color: #333; margin-top: 0; }
+                    .status-box { padding: 12px; text-align: center; border-radius: 4px; margin: 20px 0; font-size: 18px; font-weight: bold; color: #fff; }
+                    .details-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    .details-table td { padding: 8px; border-bottom: 1px solid #eaeaea; }
+                    .details-table td:first-child { font-weight: bold; width: 120px; }
+                    .footer { text-align: center; padding: 20px; font-size: 12px; color: #777; background-color: #f9f9f9; }
+                    .button { display: inline-block; padding: 12px 24px; margin-top: 20px; background-color: #2855b6; color: #ffffff !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
+
+                    @media (prefers-color-scheme: dark) {
+                        .container { background-color: #222222; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+                        .content { color: #eeeeee; }
+                        .content h1 { color: #eeeeee; }
+                        .details-table td { border-bottom-color: #444444; }
+                        .footer { background-color: #1a1a1a; color: #aaaaaa; }
+
+                        .button {
+                            background-color: #5c85d6 !important; /* A lighter, more visible blue */
+                            color: #ffffff !important;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <img src="https://tutorcore.works/assets/logo_circle.png" alt="Company Logo">
+                    </div>
+                    <div class="content">
+                        <h1>Leave Request Update</h1>
+                        <p>Hi ${user.displayName},</p>
+                        <p>There has been an update to your recent leave request. The status is now:</p>
+                        <div class="status-box" style="background-color: ${statusColor};">
+                            ${status}
+                        </div>
+                        <table class="details-table">
+                            <tr>
+                                <td>Reason:</td>
+                                <td>${leaveRequest.reason}</td>
+                            </tr>
+                            <tr>
+                                <td>From:</td>
+                                <td>${formatDate(leaveRequest.startDate)}</td>
+                            </tr>
+                            <tr>
+                                <td>To:</td>
+                                <td>${formatDate(leaveRequest.endDate)}</td>
+                            </tr>
+                        </table>
+                        <a href="${process.env.FRONTEND_URL}/dashboard/profile" class="button">View My Profile</a>
+                    </div>
+                    <div class="footer">
+                        <p>&copy; ${new Date().getFullYear()} TutorCore. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        await notificationService.createNotification(
+            userId, 
+            "Leave Request Updated", 
+            `Your leave request for "${leaveRequest.reason}" has been ${status}.`, 
+            true, 
+            html
+        );
+
+        leaveRequest.approved = approved;
+        user.markModified('leave');
+        return user.save();
     }
 
     /**
@@ -326,6 +429,49 @@ export class UserService implements IService {
             return null;
         }
         return MUser.findByIdAndUpdate(id, { $set: { availability } }, { new: true, runValidators: true }).populate('roles');
+    }
+
+    /**
+     * Assigns a badge to a user by embedding it in their document.
+     * Prevents adding a badge if one with the same name already exists for that user.
+     * @param userId The ID of the user.
+     * @param badgeData The full badge object to embed.
+     * @returns The updated user document.
+     */
+    public async addBadgeToUser(userId: string, badgeData: IBadge): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found.");
+        }
+        
+        // Prevent duplicate badges by name
+        const badgeExists = user.badges?.some(b => b.name === badgeData.name);
+        if (badgeExists) {
+            this.logger.info(`User ${userId} already has the badge "${badgeData.name}".`);
+            return user;
+        }
+
+        return (await MUser.findByIdAndUpdate(
+            userId,
+            { $push: { badges: badgeData } },
+            { new: true }
+        ).populate('roles'))!;
+    }
+
+    /**
+     * Removes a badge from a user.
+     * @param userId The ID of the user.
+     * @param badgeId The ID of the badge to remove.
+     * @returns The updated user document.
+     */
+    public async removeBadgeFromUser(userId: string, badgeId: string): Promise<IUser> {
+        const user = await MUser.findById(userId);
+
+        user!.badges = user!.badges?.filter((badge) => badge._id.toString() !== badgeId);
+
+        await user!.save(); 
+
+        return user!;
     }
 
 }

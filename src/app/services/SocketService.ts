@@ -18,7 +18,8 @@ export class SocketService {
     private logger = Singleton.getInstance(LoggingService);
 
     private topicPermissions: { [topic in ESocketMessage]?: EPermission } = {
-        [ESocketMessage.UsersUpdated]: EPermission.USERS_VIEW
+        [ESocketMessage.UsersUpdated]: EPermission.USERS_VIEW,
+        [ESocketMessage.BadgesUpdated]: EPermission.BADGES_VIEW, // users wanting to view badge collection will get the update
     };
 
     /**
@@ -50,11 +51,13 @@ export class SocketService {
             });
 
             socket.on('subscribe', async (topic: ESocketMessage) => {
-                if (user && await this.hasPermission(user, topic)) {
-                    socket.join(topic);
-                    this.logger.info(`Client ${socket.id} subscribed to topic: ${topic}`);
-                } else {
-                    this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to lack of permissions`);
+                if (user) {
+                    if (await this.hasPermission(user, topic)) {
+                        socket.join(topic);
+                        this.logger.info(`Client ${socket.id} subscribed to topic: ${topic}`);
+                    } else {
+                        this.logger.warn(`Client ${socket.id} failed to subscribe to topic: ${topic} due to lack of permissions`);
+                    }
                 }
             });
 

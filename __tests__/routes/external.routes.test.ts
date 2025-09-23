@@ -66,6 +66,23 @@ describe('External Staff API', () => {
       expect(response.body.message).toContain('Invalid API key');
     });
 
+    it('should return 401 if Authorization header has no key after Bearer', async () => {
+        const response = await request(app)
+            .get('/api/external/tutors')
+            .set('Authorization', 'Bearer ');
+        expect(response.status).toBe(401);
+        expect(response.body.message).toContain('Unauthorized: Missing or invalid API key format.');
+    });
+
+    it('should return 500 if there is a database error', async () => {
+        (MockApiKey.find as jest.Mock).mockRejectedValue(new Error('DB connection failed'));
+        const response = await request(app)
+            .get('/api/external/tutors')
+            .set('Authorization', `Bearer ${plainTextKey}`);
+        expect(response.status).toBe(500);
+        expect(response.body.message).toContain('Internal Server Error');
+    });
+
     it('should call next() if the API key is valid', async () => {
       // For this test, we just need to confirm it doesn't return 401.
       // We'll mock the service to prevent errors in the actual route handler.

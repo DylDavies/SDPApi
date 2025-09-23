@@ -33,9 +33,19 @@ export enum EPermission {
     LEAVE_MANAGE = "leave:manage",
 
     // Proficiency Management Permissions
-    PROFICIENCIES_MANAGE = 'proficiencies:manage',
+    PROFICIENCIES_MANAGE = 'proficiencies:manage',,
 
-    // Remark Management Permissions
+    // Sidebar Management
+    SIDEBAR_MANAGE = 'sidebar:manage',
+
+    // Badge Management Permissions
+    BADGES_CREATE = 'badges:create',
+    BADGES_MANAGE = 'badges:manage',
+    BADGES_VIEW = 'badges:view',
+    BADGES_VIEW_REQUIREMENTS = 'badges:view_requirements',
+    BADGES_MANAGE_REQUIREMENTS = 'badges:manage_requirements',
+
+    NOTIFICATIONS_VIEW = 'notifications:view'    // Remark Management Permissions
     REMARKS_MANAGE = 'remarks:manage',
 
 }
