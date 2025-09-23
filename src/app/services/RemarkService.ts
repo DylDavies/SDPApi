@@ -4,11 +4,9 @@ import { Singleton } from "../models/classes/Singleton";
 import MRemark, { IRemark } from "../db/models/MRemark.model";
 import MRemarkTemplate, { IRemarkTemplate, IRemarkField } from "../db/models/MRemarkTemplate.model";
 import MEvent from "../db/models/MEvent.model";
-import { LoggingService } from "./LoggingService";
 
 export class RemarkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
-    private logger = Singleton.getInstance(LoggingService);
 
     public async init(): Promise<void> {
         const count = await MRemarkTemplate.countDocuments();
@@ -39,12 +37,12 @@ export class RemarkService implements IService {
         }
         await MRemarkTemplate.updateMany({ isActive: true }, { $set: { isActive: false } });
         const templateCount = await MRemarkTemplate.countDocuments();
-        const newTemplate = new MRemarkTemplate({
-            name: `v_ ${templateCount}`,
+        const newTemplate = await MRemarkTemplate.create({
+            name: `v_${templateCount}`,
             fields,
             isActive: true
         });
-        await newTemplate.save();
+        //await newTemplate.save();
         return newTemplate;
     }
 
@@ -59,8 +57,11 @@ export class RemarkService implements IService {
             throw new Error("This event has already been remarked.");
         }
 
-        const newRemark = new MRemark({ event: eventId, entries, template: activeTemplate._id });
-        await newRemark.save();
+        const newRemark = await MRemark.create({ 
+            event: eventId, 
+            entries, 
+            template: activeTemplate._id 
+        });
 
         await MEvent.findByIdAndUpdate(eventId, { remarked: true, remark: newRemark._id });
 

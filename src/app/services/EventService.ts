@@ -3,7 +3,6 @@ import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MEvent, { IEvent } from "../db/models/MEvent.model";
 import MBundle from "../db/models/MBundle.model";
-import { Types } from "mongoose";
 
 /**
  * A service for managing calendar events.
@@ -55,7 +54,7 @@ export class EventService implements IService {
         subjectInBundle.durationMinutes -= durationInMinutes;
         await bundle.save();
 
-        const newEvent = new MEvent({
+        const newEvent = await MEvent.create({
             bundle: bundleId,
             student: studentId,
             tutor: tutorId,
@@ -64,7 +63,6 @@ export class EventService implements IService {
             duration: durationInMinutes
         });
 
-        await newEvent.save();
         return newEvent;
     }
     

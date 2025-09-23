@@ -3,8 +3,6 @@ import { authenticationMiddleware } from "../../middleware/auth.middleware";
 import RemarkService from "../../services/RemarkService";
 import { hasPermission } from "../../middleware/permission.middleware";
 import { EPermission } from "../../models/enums/EPermission.enum";
-import { Singleton } from "../../models/classes/Singleton";
-import { LoggingService } from "../../services/LoggingService";
 
 const router = Router();
 const remarkService = RemarkService;
@@ -50,6 +48,22 @@ router.get("/:eventId", async (req, res) => {
         res.status(200).json(remark);
     } catch (error) {
         res.status(500).json({ message: "Error fetching remark", error: (error as Error).message });
+    }
+});
+
+router.patch("/:remarkId", async (req, res) => {
+    try {
+        const { remarkId } = req.params;
+        const { entries } = req.body;
+        const updatedRemark = await remarkService.updateRemark(remarkId, entries);
+
+        if (!updatedRemark) {
+            return res.status(404).json({ message: "Remark not found" });
+        }
+        
+        res.status(200).json(updatedRemark);
+    } catch (error) {
+        res.status(400).json({ message: "Error updating remark", error: (error as Error).message });
     }
 });
 
