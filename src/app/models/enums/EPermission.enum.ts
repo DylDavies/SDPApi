@@ -34,7 +34,6 @@ export enum EPermission {
 
     // Proficiency Management Permissions
     PROFICIENCIES_MANAGE = 'proficiencies:manage',
-
     // Extra Work Permissions
     EXTRA_WORK_CREATE = 'extra_work:create',
     EXTRA_WORK_VIEW = 'extra_work:view',
@@ -43,4 +42,15 @@ export enum EPermission {
     EXTRA_WORK_APPROVE = 'extra_work:approve'
 
 
+    // Sidebar Management
+    SIDEBAR_MANAGE = 'sidebar:manage',
+
+    // Badge Management Permissions
+    BADGES_CREATE = 'badges:create',
+    BADGES_MANAGE = 'badges:manage',
+    BADGES_VIEW = 'badges:view',
+    BADGES_VIEW_REQUIREMENTS = 'badges:view_requirements',
+    BADGES_MANAGE_REQUIREMENTS = 'badges:manage_requirements',
+
+    NOTIFICATIONS_VIEW = 'notifications:view'
 }

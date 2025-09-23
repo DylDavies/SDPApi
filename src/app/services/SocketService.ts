@@ -19,6 +19,7 @@ export class SocketService {
 
     private topicPermissions: { [topic in ESocketMessage]?: EPermission } = {
         [ESocketMessage.UsersUpdated]: EPermission.USERS_VIEW,
+        [ESocketMessage.BadgesUpdated]: EPermission.BADGES_VIEW,
         [ESocketMessage.ExtraWorkUpdated]: EPermission.EXTRA_WORK_VIEW
     };
 
@@ -67,7 +68,6 @@ export class SocketService {
                 } catch (error) {
                     this.logger.error('Socket subscribe error:', error);
                     socket.disconnect();
-                }
             });
 
             socket.on('unsubscribe', (topic: string) => {
