@@ -2,7 +2,6 @@ import { EventService } from '../../src/app/services/EventService';
 import MEvent from '../../src/app/db/models/MEvent.model';
 import MBundle from '../../src/app/db/models/MBundle.model';
 import { Types } from 'mongoose';
-import { mocked } from 'jest-mock';
 
 jest.mock('../../src/app/db/models/MEvent.model');
 jest.mock('../../src/app/db/models/MBundle.model');
