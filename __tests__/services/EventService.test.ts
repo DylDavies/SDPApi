@@ -2,6 +2,7 @@ import { EventService } from '../../src/app/services/EventService';
 import MEvent from '../../src/app/db/models/MEvent.model';
 import MBundle from '../../src/app/db/models/MBundle.model';
 import { Types } from 'mongoose';
+import { mocked } from 'jest-mock';
 
 jest.mock('../../src/app/db/models/MEvent.model');
 jest.mock('../../src/app/db/models/MBundle.model');
@@ -68,6 +69,48 @@ describe('EventService', () => {
 
             await expect(eventService.createEvent(bundleId, studentId, tutorId, 'Math', new Date(), 60))
                 .rejects.toThrow('Bundle not found.');
+        });
+    });
+
+    describe('getEvents', () => {
+        it('should retrieve events for a given user ID', async () => {
+            const userId = new Types.ObjectId().toHexString();
+            const mockEvents = [{ subject: 'Math' }, { subject: 'English' }];
+            
+            (MEventMock.find as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockReturnThis(),
+                exec: jest.fn().mockResolvedValue(mockEvents),
+            } as any);
+
+            const result = await eventService.getEvents(userId);
+
+            expect(MEventMock.find).toHaveBeenCalledWith({ '$or': [{ tutor: userId }, { student: userId }] });
+            expect(result).toEqual(mockEvents);
+        });
+    });
+
+    describe('updateEvent', () => {
+        it('should update an event and adjust the bundle duration', async () => {
+            const eventId = new Types.ObjectId().toHexString();
+            const bundleId = new Types.ObjectId();
+            const originalEvent = { _id: eventId, bundle: bundleId, subject: 'Math', duration: 60 };
+            const eventData = { duration: 90, subject: 'Math' };
+            const mockBundle = { 
+                subjects: [{ subject: 'Math', durationMinutes: 500 }],
+                save: jest.fn().mockResolvedValue(true),
+            };
+
+            (MEventMock.findById as jest.Mock).mockResolvedValue(originalEvent);
+            (MBundleMock.findById as jest.Mock).mockResolvedValue(mockBundle);
+            (MEventMock.findByIdAndUpdate as jest.Mock).mockResolvedValue({ ...originalEvent, ...eventData });
+
+            const result = await eventService.updateEvent(eventId, eventData);
+
+            expect(MEventMock.findById).toHaveBeenCalledWith(eventId);
+            expect(MBundleMock.findById).toHaveBeenCalledWith(bundleId);
+            expect(mockBundle.subjects[0].durationMinutes).toBe(470); // 500 + 60 - 90
+            expect(mockBundle.save).toHaveBeenCalledTimes(1);
+            expect(result?.duration).toBe(90);
         });
     });
 
