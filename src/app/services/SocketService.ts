@@ -40,7 +40,7 @@ export class SocketService {
             socket.on('authenticate', (token: string) => {
                 try {
                     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as IPayloadUser;
-                    let user = decoded;
+                    const user = decoded;
                     socket.join(user.id);
                     this.logger.info(`Client ${socket.id} authenticated and joined room ${user.id}`);
                 } catch (error) {
@@ -52,7 +52,7 @@ export class SocketService {
             socket.on('subscribe', async ({topic, token}: {topic: ESocketMessage, token: string}) => {
                 try {
                     const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as IPayloadUser;
-                    let user = decoded;
+                    const user = decoded;
 
                     if (user) {
                         if (await this.hasPermission(user, topic)) {
