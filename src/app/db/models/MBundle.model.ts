@@ -7,7 +7,7 @@ interface IBundleSubject {
     subject: string;
     grade: string;
     tutor: Types.ObjectId;
-    hours: number;
+    durationMinutes: number; // Changed from 'hours' to 'durationMinutes'
 }
 
 // Interface for the main bundle document
@@ -26,7 +26,7 @@ const BundleSubjectSchema = new Schema<IBundleSubject>({
     subject: { type: String, required: true, trim: true },
     grade: { type: String, required: true, trim: true },
     tutor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    hours: { type: Number, required: true, min: 0 }
+    durationMinutes: { type: Number, required: true, min: 0 } 
 });
 
 // Schema for the main bundle collection

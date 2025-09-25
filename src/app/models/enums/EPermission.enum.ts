@@ -52,5 +52,10 @@ export enum EPermission {
     BADGES_VIEW_REQUIREMENTS = 'badges:view_requirements',
     BADGES_MANAGE_REQUIREMENTS = 'badges:manage_requirements',
 
-    NOTIFICATIONS_VIEW = 'notifications:view'
+    // Notifications View Permissions
+    NOTIFICATIONS_VIEW = 'notifications:view',
+    
+    // Remark management Permission
+    REMARKS_MANAGE = 'remarks:manage',
+
 }
