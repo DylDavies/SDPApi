@@ -11,7 +11,7 @@ import UserService from '../services/UserService';
  * @param requiredPermissions A single permission or an array of permissions required to access the route.
  * @returns An Express middleware function.
  */
-export function hasPermission(requiredPermissions: EPermission | EPermission[]) {
+export function hasPermission(requiredPermissions: EPermission | EPermission[], requireAll: boolean = true) {
     return async (req: Request, res: Response, next: NextFunction) => {
         if (!req.user) return false;
         const user = await UserService.getUser((req.user as IPayloadUser).id);
@@ -25,9 +25,9 @@ export function hasPermission(requiredPermissions: EPermission | EPermission[]) 
         const userPermissions = new Set(user.permissions);
         const permissionsToCheck = Array.isArray(requiredPermissions) ? requiredPermissions : [requiredPermissions];
 
-        const hasAllPermissions = permissionsToCheck.every(p => userPermissions.has(p));
+        const hasPermissions = requireAll ? permissionsToCheck.every(p => userPermissions.has(p)) : permissionsToCheck.some(p => userPermissions.has(p));
 
-        if (hasAllPermissions) {
+        if (hasPermissions) {
             return next(); // User has all required permissions, proceed.
         }
 
