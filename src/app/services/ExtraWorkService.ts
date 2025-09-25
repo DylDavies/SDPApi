@@ -56,6 +56,7 @@ export class ExtraWorkService implements IService {
                 { commissionerId: new Types.ObjectId(userId) }
             ]
         })
+            .populate('userId', 'displayName')
             .populate('studentId', 'displayName')
             .populate('commissionerId', 'displayName')
             .exec();

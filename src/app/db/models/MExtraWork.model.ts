@@ -40,8 +40,8 @@ const ExtraWorkSchema = new Schema<IExtraWork>({
         required: true
     },
     workType: { type: String, required: true, trim: true },
-    details: { type: String, required: true, trim: true },
-    remuneration: { type: Number, required: true, min: 0 },
+    details: { type: String, required: true, trim: true, maxlength: 500 },
+    remuneration: { type: Number, required: true, min: 0, max: 10000 },
     dateCompleted: { type: Date, default: null },
     status: {
         type: String,
