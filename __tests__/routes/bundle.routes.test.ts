@@ -85,7 +85,7 @@ describe('Bundle Routes', () => {
         const bundleData = {
             // Use valid ObjectId strings for IDs
             student: new Types.ObjectId().toHexString(),
-            subjects: [{ subject: 'Math', tutor: new Types.ObjectId().toHexString(), hours: 10 }],
+            subjects: [{ subject: 'Math', tutor: new Types.ObjectId().toHexString(), durationMinutes: 600 }],
         };
 
         it('should create a bundle and return 201', async () => {
@@ -117,7 +117,7 @@ describe('Bundle Routes', () => {
     // --- Test Suite for POST /api/bundle/:bundleId/subjects ---
     describe('POST /api/bundle/:bundleId/subjects', () => {
         // Use valid ObjectId strings for IDs
-        const subjectData = { subject: 'Science', tutor: new Types.ObjectId().toHexString(), hours: 5 };
+        const subjectData = { subject: 'Science', tutor: new Types.ObjectId().toHexString(), durationMinutes: 300 };
         const bundleId = new Types.ObjectId().toHexString();
 
         it('should add a subject and return 200', async () => {

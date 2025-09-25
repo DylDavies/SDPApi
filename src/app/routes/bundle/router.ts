@@ -86,11 +86,12 @@ router.patch("/:bundleId", hasPermission(EPermission.BUNDLES_EDIT), async (req, 
 // POST /api/bundle/:bundleId/subjects - Add a subject to a bundle
 router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), async (req, res) => {
     try {
+        
         const { bundleId } = req.params;
         const subject = req.body;
-
-        if (!subject || !subject.subject || !subject.tutor || subject.hours === undefined) {
-            return res.status(400).send("Missing required fields for subject: subject, tutor, hours");
+        
+        if (!subject || !subject.subject || !subject.tutor || subject.durationMinutes === undefined) {
+            return res.status(400).send("Missing required fields for subject: subject, tutor, durationMinutes");
         }
         if (!Types.ObjectId.isValid(bundleId)) {
             return res.status(400).send("Invalid bundle ID format.");
@@ -98,8 +99,8 @@ router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), asyn
         if (!Types.ObjectId.isValid(subject.tutor)) {
             return res.status(400).send("Invalid tutor ID format.");
         }
-        if (typeof subject.hours !== 'number' || subject.hours <= 0) {
-            return res.status(400).send("Hours must be a positive number.");
+        if (typeof subject.durationMinutes !== 'number' || subject.durationMinutes <= 0) {
+            return res.status(400).send("durationMinutes must be a positive number.");
         }
 
         const updatedBundle = await bundleService.addSubjectToBundle(bundleId, subject);
