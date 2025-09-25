@@ -34,7 +34,7 @@ export interface IBundle {
   _id: string; // The unique identifier for the bundle
   student: string | IPopulatedUser; // The ID of the student this bundle is for, or the populated student object
   subjects: IBundleSubject[]; // An array of subjects included in the bundle
-  creator: string; // The ID of the user who created the bundle
+  creator: string | IPopulatedUser; // The ID of the user who created the bundle
   status: EBundleStatus; // The current status of the bundle (e.g., pending, approved)
   isActive: boolean; // Whether the bundle is currently active or not
   createdAt: Date; // The timestamp when the bundle was created
