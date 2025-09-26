@@ -1,4 +1,3 @@
-
 import { Schema, model, Document, Types } from 'mongoose';
 import { EUserType } from '../../models/enums/EUserType.enum';
 import { ILeave } from '../../models/interfaces/ILeave.interface';
@@ -9,6 +8,12 @@ import { EPermission } from '../../models/enums/EPermission.enum';
 import IBadge from '../../models/interfaces/IBadge.interface';
 import MBadge from './MBadge.model';
 
+export interface IRateAdjustment {
+    reason: string;
+    newRate: number;
+    effectiveDate: Date;
+    approvingManagerId: Types.ObjectId;
+}
 
 export interface IUser extends Document {
     _id: Types.ObjectId;
@@ -20,13 +25,16 @@ export interface IUser extends Document {
     createdAt: Date;
     type: EUserType;
     roles: Types.ObjectId[];
-    leave: ILeave [];
+    leave: ILeave[];
     pending: boolean;
     disabled: boolean;
     proficiencies: IProficiencyDocument[];
     theme: Theme;
     availability?: number;
     badges?: IBadge[];
+    paymentType: 'Contract' | 'Salaried';
+    monthlyMinimum: number;
+    rateAdjustments: IRateAdjustment[];
 }
 
 export interface IUserWithPermissions extends IUser {
@@ -40,7 +48,14 @@ const LeaveSchema = new Schema<ILeave>({
     approved: { type: String, enum: Object.values(ELeave), default: ELeave.Pending }
 }, { timestamps: true });
 
-const badgeSchemaUser  = MBadge.schema;
+const RateAdjustmentSchema = new Schema<IRateAdjustment>({
+    reason: { type: String, required: true },
+    newRate: { type: Number, required: true },
+    effectiveDate: { type: Date, required: true },
+    approvingManagerId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+});
+
+const badgeSchemaUser = MBadge.schema;
 
 const UserSchema = new Schema<IUser>({
     googleId: { type: String, required: true, unique: true },
@@ -70,11 +85,14 @@ const UserSchema = new Schema<IUser>({
         enum: ['light', 'dark', 'system'],
         default: 'system'
     },
-    availability:{
+    availability: {
         type: Number,
         default: 0
     },
     badges: [badgeSchemaUser],
+    paymentType: { type: String, enum: ['Contract', 'Salaried'], default: 'Contract' },
+    monthlyMinimum: { type: Number, default: 0 },
+    rateAdjustments: [RateAdjustmentSchema],
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);

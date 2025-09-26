@@ -469,9 +469,101 @@ export class UserService implements IService {
 
         user!.badges = user!.badges?.filter((badge) => badge._id.toString() !== badgeId);
 
-        await user!.save(); 
+        await user!.save();
 
         return user!;
+    }
+
+    // ===== RATE ADJUSTMENT MANAGEMENT =====
+
+    /**
+     * Add a rate adjustment to a user's history
+     * @param userId The ID of the user
+     * @param rateAdjustment The rate adjustment data
+     * @returns The updated user document
+     */
+    public async addRateAdjustment(userId: string, rateAdjustment: {
+        reason: string;
+        newRate: number;
+        effectiveDate: Date;
+        approvingManagerId: string;
+    }): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Get the approving manager's name for logging
+        const approvingManager = await MUser.findById(rateAdjustment.approvingManagerId);
+        const managerName = approvingManager?.displayName || 'Unknown Manager';
+
+        // Add the rate adjustment to the user's history
+        user.rateAdjustments = user.rateAdjustments || [];
+        user.rateAdjustments.push({
+            reason: rateAdjustment.reason,
+            newRate: rateAdjustment.newRate,
+            effectiveDate: rateAdjustment.effectiveDate,
+            approvingManagerId: new Types.ObjectId(rateAdjustment.approvingManagerId)
+        });
+
+        // Sort rate adjustments by effective date (most recent first)
+        user.rateAdjustments.sort((a, b) =>
+            new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
+        );
+
+        await user.save();
+
+        // Log the rate adjustment for audit trail
+        this.logger.info(`Rate adjustment added for user ${user.displayName} (${user.email})`, {
+            userId: user._id.toString(),
+            userEmail: user.email,
+            userName: user.displayName,
+            previousRate: user.rateAdjustments.length > 1 ? user.rateAdjustments[1].newRate : 'N/A',
+            newRate: rateAdjustment.newRate,
+            reason: rateAdjustment.reason,
+            effectiveDate: rateAdjustment.effectiveDate.toISOString(),
+            approvingManagerId: rateAdjustment.approvingManagerId,
+            approvingManagerName: managerName,
+            timestamp: new Date().toISOString()
+        });
+
+        return user;
+    }
+
+    /**
+     * Remove a rate adjustment from a user's history (for corrections)
+     * @param userId The ID of the user
+     * @param adjustmentIndex The index of the adjustment to remove
+     * @returns The updated user document
+     */
+    public async removeRateAdjustment(userId: string, adjustmentIndex: number): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        if (!user.rateAdjustments || adjustmentIndex >= user.rateAdjustments.length || adjustmentIndex < 0) {
+            throw new Error("Rate adjustment not found");
+        }
+
+        const removedAdjustment = user.rateAdjustments[adjustmentIndex];
+        user.rateAdjustments.splice(adjustmentIndex, 1);
+
+        await user.save();
+
+        // Log the removal for audit trail
+        this.logger.info(`Rate adjustment removed for user ${user.displayName} (${user.email})`, {
+            userId: user._id.toString(),
+            userEmail: user.email,
+            userName: user.displayName,
+            removedRate: removedAdjustment.newRate,
+            removedReason: removedAdjustment.reason,
+            removedEffectiveDate: removedAdjustment.effectiveDate.toISOString(),
+            adjustmentIndex,
+            timestamp: new Date().toISOString()
+        });
+
+        return user;
     }
 
 }

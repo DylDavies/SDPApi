@@ -45,5 +45,10 @@ export enum EPermission {
     BADGES_VIEW_REQUIREMENTS = 'badges:view_requirements',
     BADGES_MANAGE_REQUIREMENTS = 'badges:manage_requirements',
 
-    NOTIFICATIONS_VIEW = 'notifications:view'
+    NOTIFICATIONS_VIEW = 'notifications:view',
+
+    CAN_MANAGE_PAYSLIPS = 'payslips:manage',
+    CAN_VIEW_OWN_PAYSLIP = 'payslips:view_own',
+    CAN_MANAGE_PREAPPROVED_ITEMS = 'payslips:preapproved_items_manage',
+    CAN_ADJUST_RATES = 'payslips:rate_adjustment'
 }
