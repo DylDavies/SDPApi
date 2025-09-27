@@ -3,7 +3,6 @@ import { MPayslip } from '../../src/app/db/models/MPayslip.model';
 import { MPreapprovedItems } from '../../src/app/db/models/MPreapprovedItems.model';
 import { EPayslipStatus } from '../../src/app/models/enums/EPayslipStatus.enum';
 import { Types } from 'mongoose';
-import ConfigService from '../../src/app/services/ConfigService';
 
 // Mock MongoDB models
 jest.mock('../../src/app/db/models/MPayslip.model');
@@ -184,7 +183,7 @@ describe('PayslipService', () => {
             MockedMPayslip.findById.mockResolvedValue(mockPayslip);
             MockedMPayslip.find.mockResolvedValue([]); // Mock for tax calculation
 
-            const result = await payslipService.addCompletedEvent(payload);
+            await payslipService.addCompletedEvent(payload);
 
             expect(mockPayslip.earnings).toHaveLength(1);
             expect(mockPayslip.earnings[0]).toMatchObject({
