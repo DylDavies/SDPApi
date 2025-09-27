@@ -42,6 +42,14 @@ export enum EPermission {
     EXTRA_WORK_APPROVE = 'extra_work:approve',
 
 
+    //Missions Management Permissions
+    MISSIONS_CREATE = 'missions:create',
+    MISSIONS_VIEW = 'missions:view',
+    MISSIONS_EDIT = 'missions:edit',
+    MISSIONS_DELETE = 'missions:delete',
+    MISSIONS_APPROVE = 'missions:approve',
+
+
     // Sidebar Management
     SIDEBAR_MANAGE = 'sidebar:manage',
 
