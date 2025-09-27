@@ -31,6 +31,9 @@ async function main() {
     app.use(loggerMiddleware);
     app.use(attachUserMiddleware);
 
+    // --- Serve Static Files ---
+    app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
     // --- Route Loading (can remain the same) ---
     logger.info("Loading routes...");
     const routes = fs.readdirSync(path.join(__dirname, "routes"));

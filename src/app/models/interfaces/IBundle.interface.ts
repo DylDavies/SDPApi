@@ -22,7 +22,7 @@ export interface IBundleSubject {
   subject: string; // The ID of the subject being taught
   grade: string; // The grade for the subject
   tutor: string | IPopulatedUser; // The ID of the assigned tutor, or the populated tutor object
-  hours: number; // The number of tutoring hours for this subject
+  durationMinutes: number; // The number of tutoring hours for this subject
 }
 
 /**
@@ -34,7 +34,7 @@ export interface IBundle {
   _id: string; // The unique identifier for the bundle
   student: string | IPopulatedUser; // The ID of the student this bundle is for, or the populated student object
   subjects: IBundleSubject[]; // An array of subjects included in the bundle
-  creator: string; // The ID of the user who created the bundle
+  createdBy: string | IPopulatedUser; // The ID of the user who created the bundle
   status: EBundleStatus; // The current status of the bundle (e.g., pending, approved)
   isActive: boolean; // Whether the bundle is currently active or not
   createdAt: Date; // The timestamp when the bundle was created
