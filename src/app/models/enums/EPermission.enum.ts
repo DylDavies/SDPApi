@@ -63,7 +63,7 @@ export enum EPermission {
     CAN_MANAGE_PAYSLIPS = 'payslips:manage',
     CAN_VIEW_OWN_PAYSLIP = 'payslips:view_own',
     CAN_MANAGE_PREAPPROVED_ITEMS = 'payslips:preapproved_items_manage',
-    CAN_ADJUST_RATES = 'payslips:rate_adjustment'
+    CAN_ADJUST_RATES = 'payslips:rate_adjustment',
 
     // Notifications View Permissions
     NOTIFICATIONS_VIEW = 'notifications:view',
