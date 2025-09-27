@@ -21,7 +21,12 @@ export class BundleService implements IService {
      * @returns A promise that resolves to an array of all bundles.
      */
     public async getBundles(): Promise<IBundle[]> {
-        return MBundle.find().populate('student', 'displayName').populate('subjects.tutor', 'displayName').exec();
+
+        return MBundle.find()
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName') // This populates the creator field
+            .exec();
     }
     /**
  * Finds a single bundle by its ID and populates the student and tutor details.
@@ -32,6 +37,7 @@ export class BundleService implements IService {
         return MBundle.findById(id)
             .populate('student', 'displayName')
             .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName')
             .exec();
     }
 
