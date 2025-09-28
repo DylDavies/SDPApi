@@ -218,7 +218,7 @@ describe('UserService', () => {
     });
 
     describe('getAllUsers', () => {
-        it('should call MUser.find and populate roles and proficiencies', async () => {
+        it('should call MUser.find and populate roles, proficiencies and badges', async () => {
             const findMock = { populate: jest.fn().mockResolvedValue([]) };
             (MUser.find as jest.Mock).mockReturnValue(findMock);
 
@@ -226,6 +226,48 @@ describe('UserService', () => {
 
             expect(MUser.find).toHaveBeenCalled();
             expect(findMock.populate).toHaveBeenCalledWith(['roles', 'proficiencies', { path: 'badges.badge' }]);
+        });
+    });
+
+    describe('addBadgeToUser', () => {
+        it('should add a badge to a user', async () => {
+            const badgeId = new Types.ObjectId().toHexString();
+            (MUser.findByIdAndUpdate as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({ _id: 'user123' })
+            });
+
+            await userService.addBadgeToUser('user123', badgeId);
+
+            expect(MUser.findByIdAndUpdate).toHaveBeenCalledWith(
+                'user123',
+                expect.objectContaining({ $push: { badges: expect.any(Object) } }),
+                { new: true }
+            );
+        });
+    });
+
+    describe('removeBadgeFromUser', () => {
+        it('should remove a badge from a user', async () => {
+            const badgeId = new Types.ObjectId().toHexString();
+            (MUser.findByIdAndUpdate as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({ _id: 'user123' })
+            });
+
+            await userService.removeBadgeFromUser('user123', badgeId);
+
+            expect(MUser.findByIdAndUpdate).toHaveBeenCalledWith(
+                'user123',
+                { $pull: { badges: { badge: new Types.ObjectId(badgeId) } } },
+                { new: true }
+            );
+        });
+    });
+    
+    describe('addOrUpdateProficiency', () => {
+        it('should return null if user is not found', async () => {
+            (MUser.findById as jest.Mock).mockResolvedValue(null);
+            const result = await userService.addOrUpdateProficiency('user123', {} as any);
+            expect(result).toBeNull();
         });
     });
 

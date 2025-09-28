@@ -79,4 +79,12 @@ describe('BadgeService', () => {
       expect(MBadge.deleteOne).toHaveBeenCalledWith({ _id: badgeId.toHexString() });
     });
   });
+
+  describe('getBadgesByIds', () => {
+    it('should retrieve multiple badges by an array of badge IDs', async () => {
+        const ids = [new mongoose.Types.ObjectId().toHexString(), new mongoose.Types.ObjectId().toHexString()];
+        await badgeService.getBadgesByIds(ids);
+        expect(MBadge.find).toHaveBeenCalledWith({ '_id': { $in: ids } });
+    });
+  });
 });

@@ -10,6 +10,7 @@ const mockBadgeService = {
     deleteBadge: jest.fn(),
     getBadgeRequirement: jest.fn(),
     updateBadgeRequirement: jest.fn(),
+    getBadgesByIds: jest.fn(),
 };
 
 jest.mock('../../src/app/services/BadgeService', () => ({
@@ -154,6 +155,27 @@ describe('Badge Routes', () => {
 
             expect(response.status).toBe(400);
             expect(response.body.message).toBe('Requirements text is missing or invalid.');
+        });
+    });
+
+    describe('POST /api/badges/by-ids', () => {
+        it('should return 400 if ids is not an array', async () => {
+            const response = await request(app)
+                .post('/api/badges/by-ids')
+                .send({ ids: 'not-an-array' });
+
+            expect(response.status).toBe(400);
+            expect(response.body.msg).toBe('An array of badge IDs is required.');
+        });
+
+        it('should return 500 on a service error', async () => {
+            mockBadgeService.getBadgesByIds.mockRejectedValue(new Error('DB Error'));
+            const response = await request(app)
+                .post('/api/badges/by-ids')
+                .send({ ids: [] });
+
+            expect(response.status).toBe(500);
+            expect(response.text).toBe('Server Error');
         });
     });
 });
