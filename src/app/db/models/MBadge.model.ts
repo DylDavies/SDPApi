@@ -10,9 +10,8 @@ const badgeSchema = new Schema<IBadgeDocument>({
     summary: { type: String, required: true },
     description: { type: String, required: true },
     permanent: { type: Boolean, required: true, default: false },
-    expirationDate: { type: Date, required: false },
+    duration: { type: Number, required: false },
     bonus: { type: Number, required: true, default: 0 }
-    
 }, { timestamps: true })
 
 const MBadge = model<IBadgeDocument>("Badges", badgeSchema); 
