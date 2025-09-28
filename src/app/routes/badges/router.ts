@@ -56,6 +56,26 @@ router.get('/', async(req, res) =>{
 });
 
 /**
+ * @route   POST /badges/by-ids
+ * @desc    Get multiple badges by their ObjectIDs
+ */
+router.post('/by-ids', async (req, res) => {
+    try {
+        const { ids } = req.body;
+
+        if (!ids || !Array.isArray(ids)) {
+            return res.status(400).json({ msg: 'An array of badge IDs is required.' });
+        }
+        
+        const badges = await badgeService.getBadgesByIds(ids);
+        res.json(badges);
+    } catch (error) {
+        logger.error("Error in POST /badges/by-ids: ", error);
+        res.status(500).send('Server Error');
+    }
+});
+
+/**
  * @route DELETE /badges/:badgeId
  * @description Deletes a badge by its ID.
  * @param badgeId - ID of the badge to delete

@@ -11,9 +11,6 @@ jest.mock('../../src/app/services/RoleService');
 jest.mock('../../src/app/services/NotificationService');
 jest.mock('../../src/app/services/LoggingService');
 
-// NOTE: The previous jest.mock('mongoose', ...) has been removed as it was causing the error.
-// We will mock the necessary 'mongoose' methods directly using spies where needed.
-
 describe('UserService', () => {
     let userService: UserService;
     let mockRoleService: jest.Mocked<RoleService>;
@@ -228,9 +225,8 @@ describe('UserService', () => {
             await userService.getAllUsers();
 
             expect(MUser.find).toHaveBeenCalled();
-            expect(findMock.populate).toHaveBeenCalledWith(['roles', 'proficiencies']);
+            expect(findMock.populate).toHaveBeenCalledWith(['roles', 'proficiencies', { path: 'badges.badge' }]);
         });
     });
 
 });
-

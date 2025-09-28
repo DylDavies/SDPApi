@@ -108,6 +108,7 @@ router.post("/:userId/type", hasPermission(EPermission.ADMIN_DASHBOARD_VIEW), as
 });
 // Add this import to the top of your file
 import { ELeave } from "../../models/enums/ELeave.enum";
+import MBadge from "../../db/models/MBadge.model";
 
 // POST /api/users/:userId/leave - Submit a new leave request
 // This route is for a user to submit their own leave request
@@ -230,13 +231,18 @@ router.patch("/:userId/availability", hasPermission(EPermission.PROFILE_PAGE_VIE
 router.post("/:userId/badges", hasPermission(EPermission.BADGES_MANAGE), async (req, res) =>{
     try{
         const { userId } = req.params;
-        const { badgeData } = req.body;
+        const { badgeId } = req.body;
 
-        if(!badgeData){
-            return res.status(400).send("badge data is required.");
+        if(!badgeId){
+            return res.status(400).send("Badge ID is required.");
         }
 
-        const updatedUser = await userService.addBadgeToUser(userId, badgeData);
+        const badgeExists = await MBadge.findById(badgeId);
+        if(!badgeExists){
+            return res.status(404).send('Badge not found');
+        }
+
+        const updatedUser = await userService.addBadgeToUser(userId, badgeId);
         res.status(200).json(updatedUser);
     } 
     catch(error){
@@ -318,6 +324,20 @@ router.delete("/:userId/rate-adjustments/:adjustmentIndex", hasPermission(EPermi
         res.status(200).json(updatedUser);
     } catch (error) {
         res.status(403).json({ message: "Error removing rate adjustment", error: (error as Error).message });
+    }
+});
+
+/**
+ * @route   POST /api/users/run-badge-cleanup
+ * @desc    Manually trigger the expired badge cleanup job (FOR TESTING ONLY)
+ * @access  Private (Admin Only)
+ */
+router.post("/run-badge-cleanup", hasPermission(EPermission.ADMIN_DASHBOARD_VIEW), async (req, res) => {
+    try {
+        await UserService.cleanupExpiredBadges();
+        res.status(200).send("Expired badge cleanup job completed successfully.");
+    } catch (error) {
+        res.status(500).json({ message: "Error running badge cleanup job", error: (error as Error).message });
     }
 });
 
