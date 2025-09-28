@@ -5,9 +5,12 @@ import UserService from "../../services/UserService";
 import IPayloadUser from "../../models/interfaces/IPayloadUser.interface";
 import { EUserType } from "../../models/enums/EUserType.enum";
 import { IProficiency } from "../../models/interfaces/IProficiency.interface";
+import { authenticationMiddleware } from "../../middleware/auth.middleware";
 
 const router = Router();
 const userService = UserService;
+
+router.use(authenticationMiddleware);
 
 // GET /api/users - Get a list of all users
 router.get("/", hasPermission(EPermission.USERS_VIEW), async (req, res) => {
@@ -245,14 +248,77 @@ router.post("/:userId/badges", hasPermission(EPermission.BADGES_MANAGE), async (
 router.delete("/:userId/badges/:badgeId", hasPermission(EPermission.BADGES_MANAGE), async (req, res) =>{
     try{
         const { userId, badgeId } = req.params;
-        
+
         const updatedUser = await userService.removeBadgeFromUser(userId, badgeId);
         res.status(200).json(updatedUser);
-    } 
+    }
     catch(error){
         res.status(403).json({ message: "Error removing badge", error: (error as Error).message });
     }
 });
 
+// ===== RATE ADJUSTMENT MANAGEMENT =====
+
+// POST /api/users/:userId/rate-adjustments - Add a rate adjustment for a user
+router.post("/:userId/rate-adjustments", hasPermission(EPermission.CAN_ADJUST_RATES), async (req, res) => {
+    try {
+        const performingUser = req.user as IPayloadUser;
+        const { userId } = req.params;
+        const { reason, newRate, effectiveDate } = req.body;
+
+        if (!reason || !newRate || !effectiveDate) {
+            return res.status(400).json({ message: "reason, newRate, and effectiveDate are required." });
+        }
+
+        if (typeof newRate !== 'number' || newRate < 0) {
+            return res.status(400).json({ message: "newRate must be a positive number." });
+        }
+
+        const rateAdjustment = {
+            reason,
+            newRate,
+            effectiveDate: new Date(effectiveDate),
+            approvingManagerId: performingUser.id
+        };
+
+        const updatedUser = await userService.addRateAdjustment(userId, rateAdjustment);
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        res.status(403).json({ message: "Error adding rate adjustment", error: (error as Error).message });
+    }
+});
+
+// GET /api/users/:userId/rate-adjustments - Get rate adjustment history for a user
+router.get("/:userId/rate-adjustments", hasPermission(EPermission.CAN_ADJUST_RATES), async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = await userService.getUser(userId);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        res.status(200).json(user.rateAdjustments || []);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching rate adjustments", error: (error as Error).message });
+    }
+});
+
+// DELETE /api/users/:userId/rate-adjustments/:adjustmentIndex - Remove a rate adjustment (for corrections)
+router.delete("/:userId/rate-adjustments/:adjustmentIndex", hasPermission(EPermission.CAN_ADJUST_RATES), async (req, res) => {
+    try {
+        const { userId, adjustmentIndex } = req.params;
+        const index = parseInt(adjustmentIndex);
+
+        if (isNaN(index) || index < 0) {
+            return res.status(400).json({ message: "Invalid adjustment index." });
+        }
+
+        const updatedUser = await userService.removeRateAdjustment(userId, index);
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        res.status(403).json({ message: "Error removing rate adjustment", error: (error as Error).message });
+    }
+});
 
 export default router;

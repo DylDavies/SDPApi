@@ -6,6 +6,11 @@ import { EUserType } from '../../src/app/models/enums/EUserType.enum';
 import { ELeave } from '../../src/app/models/enums/ELeave.enum';
 import IPayloadUser from '../../src/app/models/interfaces/IPayloadUser.interface';
 import { JwtPayload } from 'jsonwebtoken';
+import { Types } from 'mongoose';
+import { EPermission } from '../../src/app/models/enums/EPermission.enum';
+
+// Mock environment variables
+process.env.JWT_SECRET = 'test-jwt-secret';
 
 declare global {
     namespace Express {
@@ -17,6 +22,21 @@ declare global {
 
 // Mock the dependencies
 jest.mock('../../src/app/services/UserService');
+
+jest.mock('../../src/app/middleware/auth.middleware', () => ({
+    authenticationMiddleware: jest.fn((req: Request, res: Response, next: NextFunction) => {
+        (req as any).user = {
+            id: new Types.ObjectId().toHexString(),
+            email: 'test@admin.com',
+            displayName: 'Test Admin',
+            firstLogin: false,
+            permissions: [EPermission.USERS_VIEW, EPermission.USERS_MANAGE_ROLES, EPermission.USERS_EDIT, EPermission.USERS_DELETE],
+            type: EUserType.Admin,
+        };
+        next();
+    }),
+}));
+
 jest.mock('../../src/app/middleware/permission.middleware', () => ({
     // Mock the hasPermission middleware to always call next()
     // This allows us to test the route handler logic in isolation
@@ -26,11 +46,6 @@ jest.mock('../../src/app/middleware/permission.middleware', () => ({
 const app = express();
 // Add middleware that our router expects
 app.use(express.json());
-// Add a mock user to the request object for the route handlers to use
-app.use((req, res, next) => {
-    req.user = { id: 'performingUserId', type: EUserType.Staff, email: 'mock@email.com', displayName: "mockName", firstLogin: false, permissions: [] };
-    next();
-});
 app.use('/api/users', usersRouter);
 
 describe('Users Router', () => {
@@ -68,7 +83,7 @@ describe('Users Router', () => {
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(updatedUser);
-            expect(UserService.assignRoleToUser).toHaveBeenCalledWith('performingUserId', 'targetUserId', 'role123', false);
+            expect(UserService.assignRoleToUser).toHaveBeenCalledWith(expect.any(String), 'targetUserId', 'role123', true);
         });
         
         it('should return 400 if roleId is not provided', async () => {

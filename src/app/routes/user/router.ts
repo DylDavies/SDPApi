@@ -67,7 +67,7 @@ router.patch('/preferences', async (req, res) => {
             return res.status(400).send('Invalid theme value.');
         }
 
-        userService.updateUserPreferences(userId, {theme});
+        await userService.updateUserPreferences(userId, {theme});
 
         res.status(200).json({ message: 'Preferences updated successfully.' });
     } catch (error) {
