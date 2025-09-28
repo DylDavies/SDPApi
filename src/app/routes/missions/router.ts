@@ -78,6 +78,17 @@ router.get("/bundle/:bundleId", hasPermission(EPermission.MISSIONS_VIEW), async 
     }
 });
 
+// GET /api/missions/find/bundle/:bundleId/tutor/:tutorId - Find a mission by bundle and tutor
+router.get("/find/bundle/:bundleId/tutor/:tutorId", async (req, res) => {
+    try {
+        const { bundleId, tutorId } = req.params;
+        const mission = await MissionsService.findMissionByBundleAndTutor(bundleId, tutorId);
+        res.status(200).json(mission);
+    } catch (error) {
+        res.status(500).json({ message: "Error finding mission", error: (error as Error).message });
+    }
+});
+
 // GET /api/missions/:missionId - Get a single mission by its ID
 router.get("/:missionId", hasPermission(EPermission.MISSIONS_VIEW), async (req, res) => {
     try {
@@ -131,6 +142,23 @@ router.post("/", upload.single('document'), async (req, res) => {
         res.status(500).json({ message: "Error creating mission", error: (error as Error).message });
     }
 });
+
+// PATCH /api/missions/:missionId/hours - Update the hours of a mission
+router.patch("/:missionId/hours", async (req, res) => {
+    try {
+        const { missionId } = req.params;
+        const { hours } = req.body;
+
+        const updatedMission = await MissionsService.updateMissionHours(missionId, hours);
+        if (!updatedMission) {
+            return res.status(404).send("Mission not found.");
+        }
+        res.status(200).json(updatedMission);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating mission hours", error: (error as Error).message });
+    }
+});
+
 
 // PATCH /api/missions/:missionId - Update a mission
 router.patch("/:missionId", hasPermission(EPermission.MISSIONS_EDIT), async (req, res) => {
@@ -196,35 +224,5 @@ router.delete("/:missionId", hasPermission(EPermission.MISSIONS_DELETE), async (
         res.status(500).json({ message: "Error deleting mission", error: (error as Error).message });
     }
 });
-
-// GET /api/missions/document/:filename - Download a mission document
-/*router.get("/document/:filename", (req, res) => {
-    const { filename } = req.params;
-    
-   const filePath = path.join(process.cwd(), 'uploads/missions', filename);
-
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            return res.status(404).send('File not found.');
-        }
-        res.setHeader("Content-Type", "application/pdf");
-        res.sendFile(filePath); 
-    });
-});
-
-router.get("/:missionId/document", async (req, res) => {
-  try {
-    const { missionId } = req.params;
-    const mission = await MissionsService.getMissionById(missionId);
-    if (!mission) return res.status(404).send("Mission not found");
-    
-    const filePath = path.join(__dirname, '../../..', 'uploads/missions', mission.documentPath);
-    res.setHeader("Content-Type", "application/pdf");
-    res.sendFile(filePath);
-  } catch (err) {
-    res.status(500).send("Error retrieving document");
-  }
-});*/
-
 
 export default router;
