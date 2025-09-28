@@ -175,7 +175,8 @@ describe('PayslipService', () => {
                 eventDate,
                 description: 'Tutoring Session',
                 quantity: 2,
-                rate: 150
+                rate: 150,
+                baseRate: 100
             };
 
             mockPayslip.earnings = [];
@@ -203,7 +204,8 @@ describe('PayslipService', () => {
                 eventDate,
                 description: 'Tutoring Session',
                 quantity: 2,
-                rate: 150
+                rate: 150,
+                baseRate: 100
             };
 
             mockPayslip.earnings = [{

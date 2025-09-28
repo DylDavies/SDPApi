@@ -4,6 +4,8 @@ import { Singleton } from "../models/classes/Singleton";
 import MRemark, { IRemark } from "../db/models/MRemark.model";
 import MRemarkTemplate, { IRemarkTemplate, IRemarkField } from "../db/models/MRemarkTemplate.model";
 import MEvent from "../db/models/MEvent.model";
+import PayslipService from "./PayslipService";
+import UserService from "./UserService";
 
 export class RemarkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -52,7 +54,7 @@ export class RemarkService implements IService {
             throw new Error("No active remark template found.");
         }
 
-        const existingEvent = await MEvent.findById(eventId);
+        const existingEvent = await MEvent.findById(eventId).populate('student', 'displayName');
         if (existingEvent && existingEvent.remarked) {
             throw new Error("This event has already been remarked.");
         }
@@ -64,6 +66,21 @@ export class RemarkService implements IService {
         });
 
         await MEvent.findByIdAndUpdate(eventId, { remarked: true, remark: newRemark._id });
+
+        // Payment
+        const rate = (await UserService.getUser(existingEvent!.tutor.toHexString()))?.rateAdjustments
+            .sort((a, b) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())[0]?.newRate;
+
+        if (rate) {
+            await PayslipService.addCompletedEvent({
+                baseRate: 50,
+                quantity: existingEvent!.duration / 60,
+                eventDate: existingEvent!.startTime,
+                rate,
+                userId: existingEvent!.tutor,
+                description: `${existingEvent!.subject} lesson for ${(existingEvent!.student as unknown as {displayName: string}).displayName}`
+            });
+        }
 
         return newRemark;
     }
