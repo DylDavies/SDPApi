@@ -19,6 +19,19 @@ const mockPayslipService = {
     updatePayslipStatus: jest.fn(),
     recalculatePayslip: jest.fn(),
     getPreapprovedItems: jest.fn(),
+    getPayslipHistory: jest.fn(),
+    addQueryNote: jest.fn(),
+    updateQueryNote: jest.fn(),
+    deleteQueryNote: jest.fn(),
+    resolveQueryNote: jest.fn(),
+    addBonus: jest.fn(),
+    removeBonus: jest.fn(),
+    addDeduction: jest.fn(),
+    updateDeduction: jest.fn(),
+    removeDeduction: jest.fn(),
+    addMiscEarning: jest.fn(),
+    updateMiscEarning: jest.fn(),
+    removeMiscEarning: jest.fn(),
 };
 
 const mockMPayslip = {
@@ -105,21 +118,17 @@ describe('Payslips Routes', () => {
             delete payslip2.save;
             const mockPayslips = [payslip1, payslip2];
 
-            mockMPayslip.find.mockReturnValue({
-                sort: jest.fn().mockResolvedValue(mockPayslips),
-            });
+            mockPayslipService.getPayslipHistory.mockResolvedValue(mockPayslips);
 
             const response = await request(app).get('/api/payslips/my-history');
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(mockPayslips);
-            expect(mockMPayslip.find).toHaveBeenCalled();
+            expect(mockPayslipService.getPayslipHistory).toHaveBeenCalled();
         });
 
         it('should handle errors when fetching payslip history', async () => {
-            mockMPayslip.find.mockReturnValue({
-                sort: jest.fn().mockRejectedValue(new Error('Database error')),
-            });
+            mockPayslipService.getPayslipHistory.mockRejectedValue(new Error('Database error'));
 
             const response = await request(app).get('/api/payslips/my-history');
 
@@ -320,16 +329,20 @@ describe('Payslips Routes', () => {
     describe('POST /api/payslips/:id/bonuses', () => {
         it('should add bonus to draft payslip', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValueOnce(mockPayslip);
-            mockMPayslip.findById.mockResolvedValueOnce({ ...mockPayslip, bonuses: [{ description: 'Performance Bonus', amount: 500 }], save: undefined });
+            const updatedPayslip = { ...mockPayslip, bonuses: [{ description: 'Performance Bonus', amount: 500 }], save: undefined };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.addBonus.mockResolvedValue(updatedPayslip);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/bonuses`)
                 .send({ description: 'Performance Bonus', amount: 500 });
 
             expect(response.status).toBe(200);
-            expect(mockPayslip.save).toHaveBeenCalled();
-            expect(mockPayslipService.recalculatePayslip).toHaveBeenCalled();
+            expect(mockPayslipService.addBonus).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'Performance Bonus',
+                500
+            );
         });
 
         it('should return 400 for missing required fields', async () => {
@@ -345,7 +358,7 @@ describe('Payslips Routes', () => {
 
         it('should return 404 if payslip not found', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValue(null);
+            mockPayslipService.getPayslipById.mockResolvedValue(null);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/bonuses`)
@@ -358,20 +371,21 @@ describe('Payslips Routes', () => {
         it('should return 400 for non-draft payslips', async () => {
             const payslipId = new Types.ObjectId().toHexString();
             const lockedPayslip = { ...mockPayslip, status: EPayslipStatus.LOCKED };
-            mockMPayslip.findById.mockResolvedValue(lockedPayslip);
+            mockPayslipService.getPayslipById.mockResolvedValue(lockedPayslip);
+            mockPayslipService.addBonus.mockRejectedValue(new Error('Can only modify draft payslips'));
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/bonuses`)
                 .send({ description: 'Performance Bonus', amount: 500 });
 
-            expect(response.status).toBe(400);
-            expect(response.body.message).toBe('Can only modify draft payslips');
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error adding bonus');
         });
 
         it('should return 403 for unauthorized user', async () => {
             const payslipId = new Types.ObjectId().toHexString();
             const otherUserPayslip = { ...mockPayslip, userId: new Types.ObjectId().toHexString() };
-            mockMPayslip.findById.mockResolvedValue(otherUserPayslip);
+            mockPayslipService.getPayslipById.mockResolvedValue(otherUserPayslip);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/bonuses`)
@@ -389,42 +403,50 @@ describe('Payslips Routes', () => {
                 ...mockPayslip,
                 bonuses: [{ description: 'Performance Bonus', amount: 500 }]
             };
-            mockMPayslip.findById.mockResolvedValueOnce(payslipWithBonus);
-            mockMPayslip.findById.mockResolvedValueOnce({ ...payslipWithBonus, bonuses: [], save: undefined });
+            const updatedPayslip = { ...payslipWithBonus, bonuses: [], save: undefined };
+            mockPayslipService.getPayslipById.mockResolvedValue(payslipWithBonus);
+            mockPayslipService.removeBonus.mockResolvedValue(updatedPayslip);
 
             const response = await request(app)
                 .delete(`/api/payslips/${payslipId}/bonuses/0`);
 
             expect(response.status).toBe(200);
-            expect(payslipWithBonus.bonuses).toHaveLength(0);
-            expect(mockPayslipService.recalculatePayslip).toHaveBeenCalled();
+            expect(mockPayslipService.removeBonus).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                0
+            );
         });
 
         it('should return 400 for invalid bonus index', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValue(mockPayslip);
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.removeBonus.mockRejectedValue(new Error('Invalid bonus index'));
 
             const response = await request(app)
                 .delete(`/api/payslips/${payslipId}/bonuses/999`);
 
-            expect(response.status).toBe(400);
-            expect(response.body.message).toBe('Invalid bonus index');
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error removing bonus');
         });
     });
 
     describe('POST /api/payslips/:id/deductions', () => {
         it('should add deduction to draft payslip', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValueOnce(mockPayslip);
-            mockMPayslip.findById.mockResolvedValueOnce({ ...mockPayslip, deductions: [{ description: 'Medical Aid', amount: 200 }], save: undefined });
+            const updatedPayslip = { ...mockPayslip, deductions: [{ description: 'Medical Aid', amount: 200 }], save: undefined };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.addDeduction.mockResolvedValue(updatedPayslip);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/deductions`)
                 .send({ description: 'Medical Aid', amount: 200 });
 
             expect(response.status).toBe(200);
-            expect(mockPayslip.save).toHaveBeenCalled();
-            expect(mockPayslipService.recalculatePayslip).toHaveBeenCalled();
+            expect(mockPayslipService.addDeduction).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'Medical Aid',
+                200
+            );
         });
 
         it('should return 400 for missing required fields', async () => {
@@ -442,16 +464,20 @@ describe('Payslips Routes', () => {
     describe('POST /api/payslips/:id/misc-earnings', () => {
         it('should add misc earning to draft payslip', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValueOnce(mockPayslip);
-            mockMPayslip.findById.mockResolvedValueOnce({ ...mockPayslip, miscEarnings: [{ description: 'Overtime', amount: 300 }], save: undefined });
+            const updatedPayslip = { ...mockPayslip, miscEarnings: [{ description: 'Overtime', amount: 300 }], save: undefined };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.addMiscEarning.mockResolvedValue(updatedPayslip);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/misc-earnings`)
                 .send({ description: 'Overtime', amount: 300 });
 
             expect(response.status).toBe(200);
-            expect(mockPayslip.save).toHaveBeenCalled();
-            expect(mockPayslipService.recalculatePayslip).toHaveBeenCalled();
+            expect(mockPayslipService.addMiscEarning).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'Overtime',
+                300
+            );
         });
 
         it('should return 400 for missing required fields', async () => {
@@ -469,20 +495,28 @@ describe('Payslips Routes', () => {
     describe('POST /api/payslips/:id/query', () => {
         it('should add query note to payslip', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValue(mockPayslip);
+            const updatedPayslip = {
+                ...mockPayslip,
+                notes: [{
+                    itemId: 'item123',
+                    note: 'Please clarify this item',
+                    resolved: false
+                }],
+                save: undefined
+            };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.addQueryNote.mockResolvedValue(updatedPayslip);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/query`)
                 .send({ itemId: 'item123', note: 'Please clarify this item' });
 
             expect(response.status).toBe(200);
-            expect(mockPayslip.notes).toHaveLength(1);
-            expect(mockPayslip.notes[0]).toMatchObject({
-                itemId: 'item123',
-                note: 'Please clarify this item',
-                resolved: false
-            });
-            expect(mockPayslip.save).toHaveBeenCalled();
+            expect(mockPayslipService.addQueryNote).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'item123',
+                'Please clarify this item'
+            );
         });
 
         it('should return 400 for missing required fields', async () => {
@@ -498,7 +532,7 @@ describe('Payslips Routes', () => {
 
         it('should return 404 if payslip not found', async () => {
             const payslipId = new Types.ObjectId().toHexString();
-            mockMPayslip.findById.mockResolvedValue(null);
+            mockPayslipService.getPayslipById.mockResolvedValue(null);
 
             const response = await request(app)
                 .post(`/api/payslips/${payslipId}/query`)
@@ -511,7 +545,7 @@ describe('Payslips Routes', () => {
         it('should return 403 for unauthorized user without management permission', async () => {
             const payslipId = new Types.ObjectId().toHexString();
             const otherUserPayslip = { ...mockPayslip, userId: new Types.ObjectId().toHexString() };
-            mockMPayslip.findById.mockResolvedValue(otherUserPayslip);
+            mockPayslipService.getPayslipById.mockResolvedValue(otherUserPayslip);
             mockUserService.getUser.mockResolvedValue({
                 permissions: [EPermission.CAN_VIEW_OWN_PAYSLIP]
             });

@@ -88,11 +88,52 @@ describe('ExtraWorkService', () => {
     describe('setExtraWorkStatus', () => {
         it('should call findByIdAndUpdate with the correct status', async () => {
             const workId = new Types.ObjectId().toHexString();
-            const newStatus = EExtraWorkStatus.Approved;
+            const newStatus = EExtraWorkStatus.Completed;
             MExtraWorkMock.findByIdAndUpdate.mockResolvedValue({ _id: workId, status: newStatus } as any);
 
             await extraWorkService.setExtraWorkStatus(workId, newStatus);
 
+            expect(MExtraWorkMock.findByIdAndUpdate).toHaveBeenCalledWith(
+                workId,
+                { $set: { status: newStatus } },
+                { new: true }
+            );
+        });
+
+        it('should handle approved status with payslip integration', async () => {
+            const workId = new Types.ObjectId().toHexString();
+            const newStatus = EExtraWorkStatus.Approved;
+
+            // Mock the findById chain with populate
+            const mockWork = {
+                _id: workId,
+                userId: new Types.ObjectId(),
+                studentId: { displayName: 'Test Student' },
+                workType: 'Tutoring Session',
+                remuneration: 150,
+                dateCompleted: new Date('2025-09-15'),
+                status: EExtraWorkStatus.Completed
+            };
+
+            const mockPopulate = jest.fn().mockResolvedValue(mockWork);
+            MExtraWorkMock.findById.mockReturnValue({
+                populate: mockPopulate
+            } as any);
+
+            MExtraWorkMock.findByIdAndUpdate.mockResolvedValue({ _id: workId, status: newStatus } as any);
+
+            // Mock PayslipService methods
+            const PayslipService = require('../../src/app/services/PayslipService').default;
+            const payslipId = new Types.ObjectId().toHexString();
+            jest.spyOn(PayslipService, 'getOrCreateDraftPayslip').mockResolvedValue({ id: payslipId });
+            jest.spyOn(PayslipService, 'addBonus').mockResolvedValue(undefined);
+
+            await extraWorkService.setExtraWorkStatus(workId, newStatus);
+
+            expect(MExtraWorkMock.findById).toHaveBeenCalledWith(workId);
+            expect(mockPopulate).toHaveBeenCalledWith('studentId', 'displayName');
+            expect(PayslipService.getOrCreateDraftPayslip).toHaveBeenCalled();
+            expect(PayslipService.addBonus).toHaveBeenCalled();
             expect(MExtraWorkMock.findByIdAndUpdate).toHaveBeenCalledWith(
                 workId,
                 { $set: { status: newStatus } },

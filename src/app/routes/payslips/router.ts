@@ -3,10 +3,8 @@ import PayslipService from '../../services/PayslipService';
 import { authenticationMiddleware } from '../../middleware/auth.middleware';
 import { hasPermission } from '../../middleware/permission.middleware';
 import { EPermission } from '../../models/enums/EPermission.enum';
-import { EPayslipStatus } from '../../models/enums/EPayslipStatus.enum';
 import { Types } from 'mongoose';
 import IPayloadUser from '../../models/interfaces/IPayloadUser.interface';
-import { MPayslip } from '../../db/models/MPayslip.model'; // Import MPayslip
 import UserService from '../../services/UserService';
 
 const router = Router();
@@ -21,7 +19,7 @@ router.get(
     async (req, res) => {
         try {
             const user = req.user as IPayloadUser;
-            const payslips = await MPayslip.find({ userId: user.id }).sort({ payPeriod: -1 });
+            const payslips = await payslipService.getPayslipHistory(new Types.ObjectId(user.id));
             res.status(200).json(payslips);
         } catch (error) {
             res.status(500).json({ message: 'Error fetching payslip history', error });
@@ -168,7 +166,7 @@ router.post(
                 return res.status(400).json({ message: 'itemId and note are required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -181,16 +179,13 @@ router.post(
                 }
             }
 
-            // Add the query note
-            payslip.notes.push({
+            const updatedPayslip = await payslipService.addQueryNote(
+                new Types.ObjectId(id),
                 itemId,
-                note,
-                resolved: false
-            });
+                note
+            );
 
-            await payslip.save();
-
-            res.status(200).json(payslip);
+            res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
             res.status(500).json({ message: 'Error adding query note', error: err.message });
@@ -212,7 +207,7 @@ router.put(
                 return res.status(400).json({ message: 'note is required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -225,16 +220,13 @@ router.put(
                 }
             }
 
-            // Find and update the query note
-            const queryNote = payslip.notes.find(n => n._id?.toString() === queryId);
-            if (!queryNote) {
-                return res.status(404).json({ message: 'Query not found' });
-            }
+            const updatedPayslip = await payslipService.updateQueryNote(
+                new Types.ObjectId(id),
+                queryId,
+                note
+            );
 
-            queryNote.note = note;
-            await payslip.save();
-
-            res.status(200).json(payslip);
+            res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
             res.status(500).json({ message: 'Error updating query note', error: err.message });
@@ -251,7 +243,7 @@ router.delete(
             const { id, queryId } = req.params;
             const user = req.user as IPayloadUser;
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -264,16 +256,12 @@ router.delete(
                 }
             }
 
-            // Find and remove the query note
-            const queryIndex = payslip.notes.findIndex(n => n._id?.toString() === queryId);
-            if (queryIndex === -1) {
-                return res.status(404).json({ message: 'Query not found' });
-            }
+            const updatedPayslip = await payslipService.deleteQueryNote(
+                new Types.ObjectId(id),
+                queryId
+            );
 
-            payslip.notes.splice(queryIndex, 1);
-            await payslip.save();
-
-            res.status(200).json(payslip);
+            res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
             res.status(500).json({ message: 'Error deleting query note', error: err.message });
@@ -290,7 +278,7 @@ router.post(
             const { id, queryId } = req.params;
             const user = req.user as IPayloadUser;
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -303,16 +291,12 @@ router.post(
                 }
             }
 
-            // Find and resolve the query note
-            const queryNote = payslip.notes.find(n => n._id?.toString() === queryId);
-            if (!queryNote) {
-                return res.status(404).json({ message: 'Query not found' });
-            }
+            const updatedPayslip = await payslipService.resolveQueryNote(
+                new Types.ObjectId(id),
+                queryId
+            );
 
-            queryNote.resolved = true;
-            await payslip.save();
-
-            res.status(200).json(payslip);
+            res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
             res.status(500).json({ message: 'Error resolving query note', error: err.message });
@@ -334,7 +318,7 @@ router.post(
                 return res.status(400).json({ message: 'description and amount are required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -344,27 +328,11 @@ router.post(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
-
-            // Initialize bonuses array if it doesn't exist
-            if (!payslip.bonuses) {
-                payslip.bonuses = [];
-            }
-
-            // Add the bonus
-            payslip.bonuses.push({ description, amount });
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.addBonus(
+                new Types.ObjectId(id),
+                description,
+                amount
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -382,7 +350,7 @@ router.delete(
             const { id, bonusIndex } = req.params;
             const user = req.user as IPayloadUser;
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -392,26 +360,15 @@ router.delete(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
             const index = parseInt(bonusIndex, 10);
-            if (isNaN(index) || index < 0 || index >= payslip.bonuses.length) {
+            if (isNaN(index)) {
                 return res.status(400).json({ message: 'Invalid bonus index' });
             }
 
-            // Remove the bonus
-            payslip.bonuses.splice(index, 1);
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.removeBonus(
+                new Types.ObjectId(id),
+                index
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -436,7 +393,7 @@ router.post(
                 return res.status(400).json({ message: 'description and amount are required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -446,26 +403,11 @@ router.post(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
-            // Initialize deductions array if it doesn't exist
-            if (!payslip.deductions) {
-                payslip.deductions = [];
-            }
-
-            // Add the deduction
-            payslip.deductions.push({ description, amount });
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.addDeduction(
+                new Types.ObjectId(id),
+                description,
+                amount
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -488,7 +430,7 @@ router.put(
                 return res.status(400).json({ message: 'description and amount are required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -498,26 +440,17 @@ router.put(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
             const index = parseInt(deductionIndex, 10);
-            if (isNaN(index) || index < 0 || index >= payslip.deductions.length) {
+            if (isNaN(index)) {
                 return res.status(400).json({ message: 'Invalid deduction index' });
             }
 
-            // Update the deduction
-            payslip.deductions[index] = { description, amount };
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.updateDeduction(
+                new Types.ObjectId(id),
+                index,
+                description,
+                amount
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -535,7 +468,7 @@ router.delete(
             const { id, deductionIndex } = req.params;
             const user = req.user as IPayloadUser;
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -545,26 +478,15 @@ router.delete(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
             const index = parseInt(deductionIndex, 10);
-            if (isNaN(index) || index < 0 || index >= payslip.deductions.length) {
+            if (isNaN(index)) {
                 return res.status(400).json({ message: 'Invalid deduction index' });
             }
 
-            // Remove the deduction
-            payslip.deductions.splice(index, 1);
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.removeDeduction(
+                new Types.ObjectId(id),
+                index
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -589,7 +511,7 @@ router.post(
                 return res.status(400).json({ message: 'description and amount are required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -599,26 +521,11 @@ router.post(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
-            // Initialize miscEarnings array if it doesn't exist
-            if (!payslip.miscEarnings) {
-                payslip.miscEarnings = [];
-            }
-
-            // Add the misc earning
-            payslip.miscEarnings.push({ description, amount });
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.addMiscEarning(
+                new Types.ObjectId(id),
+                description,
+                amount
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -641,7 +548,7 @@ router.put(
                 return res.status(400).json({ message: 'description and amount are required' });
             }
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -651,26 +558,17 @@ router.put(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
             const index = parseInt(earningIndex, 10);
-            if (isNaN(index) || index < 0 || index >= payslip.miscEarnings.length) {
+            if (isNaN(index)) {
                 return res.status(400).json({ message: 'Invalid misc earning index' });
             }
 
-            // Update the misc earning
-            payslip.miscEarnings[index] = { description, amount };
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.updateMiscEarning(
+                new Types.ObjectId(id),
+                index,
+                description,
+                amount
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
@@ -688,7 +586,7 @@ router.delete(
             const { id, earningIndex } = req.params;
             const user = req.user as IPayloadUser;
 
-            const payslip = await MPayslip.findById(id);
+            const payslip = await payslipService.getPayslipById(id);
             if (!payslip) {
                 return res.status(404).json({ message: 'Payslip not found' });
             }
@@ -698,26 +596,15 @@ router.delete(
                 return res.status(403).json({ message: 'Unauthorized' });
             }
 
-            // Only allow modifications to draft payslips
-            if (payslip.status !== EPayslipStatus.DRAFT) {
-                return res.status(400).json({ message: 'Can only modify draft payslips' });
-            }
-
             const index = parseInt(earningIndex, 10);
-            if (isNaN(index) || index < 0 || index >= payslip.miscEarnings.length) {
+            if (isNaN(index)) {
                 return res.status(400).json({ message: 'Invalid misc earning index' });
             }
 
-            // Remove the misc earning
-            payslip.miscEarnings.splice(index, 1);
-
-            // Save the payslip first
-            await payslip.save();
-
-            // Then recalculate payslip totals
-            await payslipService.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
-
-            const updatedPayslip = await MPayslip.findById(id);
+            const updatedPayslip = await payslipService.removeMiscEarning(
+                new Types.ObjectId(id),
+                index
+            );
             res.status(200).json(updatedPayslip);
         } catch (error) {
             const err = error as Error;
