@@ -127,6 +127,32 @@ export class MissionService implements IService {
         const result = await MMission.deleteOne({ _id: missionId }).exec();
         return { deletedCount: result.deletedCount };
     }
+   /**
+     * Finds a single mission by its bundleId and tutorId.
+     * @param bundleId The ID of the bundle.
+     * @param tutorId The ID of the tutor.
+     * @returns A promise that resolves to the found IMission document or null.
+     */
+    public async findMissionByBundleAndTutor(bundleId: string, tutorId: string): Promise<IMissions | null> {
+        return MMission.findOne({ 
+            bundleId: new Types.ObjectId(bundleId), 
+            tutor: new Types.ObjectId(tutorId) 
+        }).exec();
+    }
+    
+    /**
+     * Updates the hours of a mission.
+     * @param missionId The ID of the mission to update.
+     * @param hours The number of hours to the mission.
+     * @returns The updated mission.
+     */
+    public async updateMissionHours(missionId: string, hours: number): Promise<IMissions | null> {
+        return MMission.findByIdAndUpdate(
+            missionId,
+            { $set: { hoursCompleted: hours } },
+            { new: true }
+        );
+    }
 }
 
 export default Singleton.getInstance(MissionService);
