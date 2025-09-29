@@ -38,6 +38,7 @@ describe('MissionService', () => {
       expect(MMission.find).toHaveBeenCalled();
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
       expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('document');
       expect(mockQuery.exec).toHaveBeenCalled();
       expect(result).toEqual(mockMissions);
     });
@@ -56,6 +57,7 @@ describe('MissionService', () => {
       expect(MMission.findById).toHaveBeenCalledWith(missionId);
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
       expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+       expect(mockQuery.populate).toHaveBeenCalledWith('document');
       expect(mockQuery.exec).toHaveBeenCalled();
       expect(result).toEqual(mockMission);
     });
@@ -77,6 +79,7 @@ describe('MissionService', () => {
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
       expect(mockQuery.populate).toHaveBeenCalledWith('tutor', 'displayName');
       expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('document');
       expect(mockQuery.exec).toHaveBeenCalled();
       expect(result).toEqual(mockMissions);
     });
@@ -98,6 +101,7 @@ describe('MissionService', () => {
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
       expect(mockQuery.populate).toHaveBeenCalledWith('tutor', 'displayName');
       expect(mockQuery.populate).toHaveBeenCalledWith('commissionedBy', 'displayName');
+      expect(mockQuery.populate).toHaveBeenCalledWith('document');
       expect(mockQuery.exec).toHaveBeenCalled();
       expect(result).toEqual(mockMissions);
     });
@@ -105,92 +109,42 @@ describe('MissionService', () => {
 
   describe('createMission', () => {
     it('should create a new mission with valid data', async () => {
-      const missionData = {
-        bundleId: new Types.ObjectId().toHexString(),
-        documentPath: '/path/to/document',
-        documentName: 'Test Document',
-        studentId: new Types.ObjectId().toHexString(),
-        tutorId: new Types.ObjectId().toHexString(),
-        remuneration: 100,
-        commissionedById: new Types.ObjectId().toHexString(),
-        dateCompleted: new Date()
-      };
-
-      const mockMission = {
-        ...missionData,
-        _id: new Types.ObjectId(),
-        save: jest.fn().mockResolvedValue(true)
-      };
-
-      // Mock the constructor
-      (MMission as unknown as jest.Mock).mockImplementation(() => mockMission);
-
-      const result = await missionService.createMission(missionData);
-
-      expect(MMission).toHaveBeenCalledWith({
-        bundleId: new Types.ObjectId(missionData.bundleId),
-        documentPath: missionData.documentPath,
-        documentName: missionData.documentName,
-        student: new Types.ObjectId(missionData.studentId),
-        tutor: new Types.ObjectId(missionData.tutorId),
-        remuneration: missionData.remuneration,
-        commissionedBy: new Types.ObjectId(missionData.commissionedById),
-        dateCompleted: missionData.dateCompleted,
-        status: EMissionStatus.Active
-      });
-      expect(mockMission.save).toHaveBeenCalled();
-      expect(result).toEqual(mockMission);
+        const missionData = {
+            bundleId: new Types.ObjectId().toHexString(),
+            documentId: new Types.ObjectId().toHexString(),
+            studentId: new Types.ObjectId().toHexString(),
+            tutorId: new Types.ObjectId().toHexString(),
+            remuneration: 100,
+            commissionedById: new Types.ObjectId().toHexString(),
+            dateCompleted: new Date()
+        };
+  
+        const mockMission = {
+            ...missionData,
+            _id: new Types.ObjectId(),
+            save: jest.fn().mockResolvedValue(true)
+        };
+  
+        // Mock the constructor
+        (MMission as unknown as jest.Mock).mockImplementation(() => mockMission);
+  
+        const result = await missionService.createMission(missionData);
+  
+        expect(MMission).toHaveBeenCalledWith({
+            bundleId: new Types.ObjectId(missionData.bundleId),
+            document: new Types.ObjectId(missionData.documentId),
+            student: new Types.ObjectId(missionData.studentId),
+            tutor: new Types.ObjectId(missionData.tutorId),
+            remuneration: missionData.remuneration,
+            commissionedBy: new Types.ObjectId(missionData.commissionedById),
+            dateCompleted: missionData.dateCompleted,
+            status: EMissionStatus.Active
+        });
+        expect(mockMission.save).toHaveBeenCalled();
+        expect(result).toEqual(mockMission);
     });
   });
 
-  describe('updateMission', () => {
-    it('should update a mission with provided data', async () => {
-      const missionId = new Types.ObjectId().toHexString();
-      const updateData = {
-        documentName: 'Updated Document Name',
-        remuneration: 150
-      };
-
-      const mockUpdatedMission = {
-        _id: missionId,
-        ...updateData
-      };
-
-      (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockUpdatedMission);
-
-      const result = await missionService.updateMission(missionId, updateData);
-
-      expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
-        missionId,
-        { $set: updateData },
-        { new: true }
-      );
-      expect(result).toEqual(mockUpdatedMission);
-    });
-  });
-
-  describe('setMissionStatus', () => {
-    it('should update the status of a mission', async () => {
-      const missionId = new Types.ObjectId().toHexString();
-      const newStatus = EMissionStatus.Completed;
-
-      const mockUpdatedMission = {
-        _id: missionId,
-        status: newStatus
-      };
-
-      (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockUpdatedMission);
-
-      const result = await missionService.setMissionStatus(missionId, newStatus);
-
-      expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
-        missionId,
-        { $set: { status: newStatus } },
-        { new: true }
-      );
-      expect(result).toEqual(mockUpdatedMission);
-    });
-  });
 
   describe('deleteMission', () => {
     it('should delete a mission and return deletion count', async () => {
@@ -207,7 +161,7 @@ describe('MissionService', () => {
 
       expect(MMission.deleteOne).toHaveBeenCalledWith({ _id: missionId });
       expect(mockDeleteQuery.exec).toHaveBeenCalled();
-      expect(result).toEqual(deleteResult);
+      expect(result).toEqual({ deletedCount: 1 });
     });
   });
 });

@@ -1,45 +1,40 @@
 import { Schema, model, Document, Types } from 'mongoose';
 import { EMissionStatus } from '../../models/enums/EMissions.enum';
 
-
-export  interface IMissions extends Document{
+export interface IMissions extends Document {
     _id: Types.ObjectId;
-    bundleId: Types.ObjectId; 
-    documentPath: string; // To store the file path
-    documentName: string; // To store the original filename // URL or reference to the document/mission details
-    student: Types.ObjectId; // The ID of the student this bundle is for, or the populated student object
-    tutor: Types.ObjectId; //Id of tutor who wrote the mission
-    createdAt: Date; // Automatically managed by timestamps
-    remuneration: number; // The payment for the mission
+    bundleId: Types.ObjectId;
+    document: Types.ObjectId; // Changed from documentPath and documentName
+    student: Types.ObjectId;
+    tutor: Types.ObjectId;
+    createdAt: Date;
+    remuneration: number;
     commissionedBy: Types.ObjectId;
     hoursCompleted: number;
-    dateCompleted: Date; // The date the mission is scheduled for
+    dateCompleted: Date;
     status: EMissionStatus;
-    updatedAt: Date; // Automatically managed by timestamps
+    updatedAt: Date;
 }
 
 const MissionSchema = new Schema<IMissions>({
-  bundleId: { 
+  bundleId: {
     type: Schema.Types.ObjectId,
     ref: 'Bundle',
     required: true
   },
-  documentPath: {
-    type: String, 
+  document: { // Changed from documentPath and documentName
+    type: Schema.Types.ObjectId,
+    ref: 'Document',
     required: true,
-  },
-  documentName: {
-      type: String,
-      required: true,
   },
   student: {
     type: Schema.Types.ObjectId,
-    ref: 'User', // Creates a reference to User model
+    ref: 'User',
     required: true
   },
-    tutor: {
+  tutor: {
     type: Schema.Types.ObjectId,
-    ref: 'User', // Creates a reference to User model
+    ref: 'User',
     required: true
   },
   remuneration: {
@@ -49,7 +44,7 @@ const MissionSchema = new Schema<IMissions>({
   },
   commissionedBy: {
     type: Schema.Types.ObjectId,
-    ref: 'User', // Creates a reference to the commissioning user
+    ref: 'User',
     required: true
   },
   hoursCompleted: {
@@ -62,15 +57,13 @@ const MissionSchema = new Schema<IMissions>({
   },
   status: {
     type: String,
-    enum: Object.values(EMissionStatus), // Ensures status is one of the defined enum values
+    enum: Object.values(EMissionStatus),
     default: EMissionStatus.Active
   }
 }, {
-
   timestamps: true
 });
 
-// Create and export the Mongoose model
 const MMission = model<IMissions>('Mission', MissionSchema);
 
 export default MMission;

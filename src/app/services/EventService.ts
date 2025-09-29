@@ -3,6 +3,8 @@ import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MEvent, { IEvent } from "../db/models/MEvent.model";
 import MBundle from "../db/models/MBundle.model";
+import { EUserType } from "../models/enums/EUserType.enum";
+import MUser from "../db/models/MUser.model";
 
 /**
  * A service for managing calendar events.
@@ -72,10 +74,32 @@ export class EventService implements IService {
      * @returns {Promise<IEvent[]>} A list of events.
      */
     public async getEvents(userId: string): Promise<IEvent[]> {
-        return MEvent.find({ $or: [{ tutor: userId }, { student: userId }] })
+        const user = await MUser.findById(userId);
+        if (!user) {
+            return [];
+        }
+    
+        if (user.type === EUserType.Client) {
+            return MEvent.find({ student: userId })
+                .populate('student', 'displayName')
+                .populate('tutor', 'displayName')
+                .exec();
+        } else {
+            // For staff, find all students they are tutoring
+            const bundles = await MBundle.find({ 'subjects.tutor': userId });
+            const studentIds = [...new Set(bundles.map(b => b.student.toString()))];
+    
+            // Return events where the user is the tutor OR the student is one of the students they tutor
+            return MEvent.find({
+                $or: [
+                    { tutor: userId },
+                    { student: { $in: studentIds } }
+                ]
+            })
             .populate('student', 'displayName')
             .populate('tutor', 'displayName')
             .exec();
+        }
     }
 
     /**
@@ -89,24 +113,22 @@ export class EventService implements IService {
         if (!originalEvent) {
             throw new Error("Event not found.");
         }
-
+    
         const bundle = await MBundle.findById(originalEvent.bundle);
         if (bundle) {
             const subjectInBundle = bundle.subjects.find(s => s.subject === originalEvent.subject);
             if (subjectInBundle) {
-                // Refund the original duration
-                subjectInBundle.durationMinutes += originalEvent.duration;
-                // Deduct the new duration
-                if (eventData.duration) {
-                    if (eventData.duration > subjectInBundle.durationMinutes) {
-                        throw new Error("Event duration exceeds the remaining time for this subject.");
-                    }
-                    subjectInBundle.durationMinutes -= eventData.duration;
+                const durationDifference = (eventData.duration || originalEvent.duration) - originalEvent.duration;
+    
+                if (durationDifference > subjectInBundle.durationMinutes) {
+                    throw new Error("Event duration exceeds the remaining time for this subject.");
                 }
+    
+                subjectInBundle.durationMinutes -= durationDifference;
                 await bundle.save();
             }
         }
-
+    
         return MEvent.findByIdAndUpdate(eventId, eventData, { new: true });
     }
 
