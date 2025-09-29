@@ -11,9 +11,6 @@ jest.mock('../../src/app/services/RoleService');
 jest.mock('../../src/app/services/NotificationService');
 jest.mock('../../src/app/services/LoggingService');
 
-// NOTE: The previous jest.mock('mongoose', ...) has been removed as it was causing the error.
-// We will mock the necessary 'mongoose' methods directly using spies where needed.
-
 describe('UserService', () => {
     let userService: UserService;
     let mockRoleService: jest.Mocked<RoleService>;
@@ -221,16 +218,57 @@ describe('UserService', () => {
     });
 
     describe('getAllUsers', () => {
-        it('should call MUser.find and populate roles and proficiencies', async () => {
+        it('should call MUser.find and populate roles, proficiencies and badges', async () => {
             const findMock = { populate: jest.fn().mockResolvedValue([]) };
             (MUser.find as jest.Mock).mockReturnValue(findMock);
 
             await userService.getAllUsers();
 
             expect(MUser.find).toHaveBeenCalled();
-            expect(findMock.populate).toHaveBeenCalledWith(['roles', 'proficiencies']);
+            expect(findMock.populate).toHaveBeenCalledWith(['roles', 'proficiencies', { path: 'badges.badge' }]);
+        });
+    });
+
+    describe('addBadgeToUser', () => {
+        it('should add a badge to a user', async () => {
+            const badgeId = new Types.ObjectId().toHexString();
+            (MUser.findByIdAndUpdate as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({ _id: 'user123' })
+            });
+
+            await userService.addBadgeToUser('user123', badgeId);
+
+            expect(MUser.findByIdAndUpdate).toHaveBeenCalledWith(
+                'user123',
+                expect.objectContaining({ $push: { badges: expect.any(Object) } }),
+                { new: true }
+            );
+        });
+    });
+
+    describe('removeBadgeFromUser', () => {
+        it('should remove a badge from a user', async () => {
+            const badgeId = new Types.ObjectId().toHexString();
+            (MUser.findByIdAndUpdate as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockResolvedValue({ _id: 'user123' })
+            });
+
+            await userService.removeBadgeFromUser('user123', badgeId);
+
+            expect(MUser.findByIdAndUpdate).toHaveBeenCalledWith(
+                'user123',
+                { $pull: { badges: { badge: new Types.ObjectId(badgeId) } } },
+                { new: true }
+            );
+        });
+    });
+    
+    describe('addOrUpdateProficiency', () => {
+        it('should return null if user is not found', async () => {
+            (MUser.findById as jest.Mock).mockResolvedValue(null);
+            const result = await userService.addOrUpdateProficiency('user123', {} as any);
+            expect(result).toBeNull();
         });
     });
 
 });
-
