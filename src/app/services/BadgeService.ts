@@ -70,6 +70,23 @@ export class BadgeService implements IService{
     }
 
     /**
+     * Retrieves a single badge by its id
+     * @param badgeId - the ID of the badge to be found
+     */
+    public async getBadgeById(badgeId: string): Promise<IBadgeDocument | null>{
+        return MBadge.findById(badgeId);    
+    }
+
+    /**
+     * Retrieves multiple badges by an array of badge ID's
+     * @param ids - Array of badge id strings
+     */
+    public async getBadgesByIds(ids: string[]): Promise<IBadgeDocument[] | null>{
+        return MBadge.find({ '_id': {$in: ids } });
+    }
+
+
+    /**
      * Deletes a badge and its associated requirements document by the badge's ID.
      * @param {string} badgeId - The ID of the badge to delete.
      * @returns {Promise<{ deletedCount: number }>} A promise that resolves to an object indicating the number of deleted badges.

@@ -3,6 +3,7 @@ import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import { Types } from "mongoose";
 import MExtraWork, { IExtraWork, EExtraWorkStatus } from "../db/models/MExtraWork.model";
+import PayslipService from "./PayslipService";
 
 export class ExtraWorkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -42,6 +43,22 @@ export class ExtraWorkService implements IService {
     }
 
     public async setExtraWorkStatus(workId: string, status: EExtraWorkStatus): Promise<IExtraWork | null> {
+        if (status == EExtraWorkStatus.Approved) {
+            const work = await MExtraWork.findById(workId).populate('studentId', 'displayName');
+
+            if (!work) return null;
+
+            const year = work.dateCompleted!.getFullYear();
+            const month = (work.dateCompleted!.getMonth() + 1).toString().padStart(2, '0');
+            const payPeriod = `${year}-${month}`;
+
+            const payslip = await PayslipService.getOrCreateDraftPayslip(work.userId, payPeriod);
+
+            const studentName = (work.studentId as unknown as {displayName: string}).displayName;
+
+            PayslipService.addBonus(new Types.ObjectId(payslip.id), `EWA - ${work.workType} for ${studentName}`, work.remuneration);
+        }
+
         return MExtraWork.findByIdAndUpdate(
             workId,
             { $set: { status } },

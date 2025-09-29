@@ -45,6 +45,17 @@ router.get("/bundle/:bundleId", hasPermission(EPermission.MISSIONS_VIEW), async 
     }
 });
 
+// GET /api/missions/find/bundle/:bundleId/tutor/:tutorId - Find a mission by bundle and tutor
+router.get("/find/bundle/:bundleId/tutor/:tutorId", async (req, res) => {
+    try {
+        const { bundleId, tutorId } = req.params;
+        const mission = await MissionsService.findMissionByBundleAndTutor(bundleId, tutorId);
+        res.status(200).json(mission);
+    } catch (error) {
+        res.status(500).json({ message: "Error finding mission", error: (error as Error).message });
+    }
+});
+
 router.get("/:missionId", hasPermission(EPermission.MISSIONS_VIEW), async (req, res) => {
     try {
         const { missionId } = req.params;
@@ -86,6 +97,23 @@ router.post("/", hasPermission(EPermission.MISSIONS_CREATE), async (req, res) =>
         res.status(500).json({ message: "Error creating mission", error: (error as Error).message });
     }
 });
+
+// PATCH /api/missions/:missionId/hours - Update the hours of a mission
+router.patch("/:missionId/hours", async (req, res) => {
+    try {
+        const { missionId } = req.params;
+        const { hours } = req.body;
+
+        const updatedMission = await MissionsService.updateMissionHours(missionId, hours);
+        if (!updatedMission) {
+            return res.status(404).send("Mission not found.");
+        }
+        res.status(200).json(updatedMission);
+    } catch (error) {
+        res.status(500).json({ message: "Error updating mission hours", error: (error as Error).message });
+    }
+});
+
 
 router.patch("/:missionId", hasPermission(EPermission.MISSIONS_EDIT), async (req, res) => {
     try {

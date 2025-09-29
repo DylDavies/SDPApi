@@ -3,11 +3,28 @@ import express, { Request, Response, NextFunction } from 'express';
 import proficienciesRouter from '../../src/app/routes/proficiencies/router';
 import ProficiencyService from '../../src/app/services/ProficiencyService';
 import ISubject from '../../src/app/models/interfaces/ISubject.interface';
+import { Types } from 'mongoose';
+import { EPermission } from '../../src/app/models/enums/EPermission.enum';
+import { EUserType } from '../../src/app/models/enums/EUserType.enum';
+
+// Mock environment variables
+process.env.JWT_SECRET = 'test-jwt-secret';
 
 // Mock dependencies
 jest.mock('../../src/app/services/ProficiencyService');
 jest.mock('../../src/app/middleware/auth.middleware', () => ({
-    authenticationMiddleware: (req: Request, res: Response, next: NextFunction) => next(),
+    authenticationMiddleware: jest.fn((req: Request, res: Response, next: NextFunction) => {
+        // Attach a mock user to the request for the handler to use
+        (req as any).user = {
+            id: new Types.ObjectId().toHexString(),
+            email: 'test@tutor.com',
+            displayName: 'Test User',
+            firstLogin: false,
+            permissions: [EPermission.PROFICIENCIES_MANAGE],
+            type: EUserType.Admin,
+        };
+        next();
+    }),
 }));
 
 const app = express();

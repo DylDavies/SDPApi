@@ -210,7 +210,10 @@ export class UserService implements IService {
             return null;
         }
 
-        const user = await MUser.findById(id).populate('roles') as IUser | null;
+        const user = await MUser.findById(id).populate([
+            { path: 'roles' },
+            { path: 'badges.badge' } 
+        ]);
 
         if (user) {
             const permissions: EPermission[] = [];
@@ -227,6 +230,51 @@ export class UserService implements IService {
         } else return null;
     }
     
+    /**
+     * A scheduled job that runs periodically
+     * It finds all users with temporary badges and removes any that have expired.
+     */
+    public async cleanupExpiredBadges(): Promise<void> {
+        this.logger.info('Starting expired badge cleanup job...');
+        const now = new Date();
+        
+        // Find all users who have at least one badge
+        const usersWithBadges = await MUser.find({ 'badges.0': { $exists: true } }).populate('badges.badge');
+
+        let badgesRemovedCount = 0;
+        for (const user of usersWithBadges) {
+            let userModified = false;
+            
+            const validBadges = user.badges!.filter(userBadge => {
+                const badgeDetails = userBadge.badge as unknown as IBadge;
+
+                // Keep permanent badges or if badge details are missing
+                if (!badgeDetails || badgeDetails.permanent || !badgeDetails.duration) {
+                    return true;
+                }
+
+                const expirationDate = new Date(userBadge.dateAdded);
+                expirationDate.setDate(expirationDate.getDate() + badgeDetails.duration);
+
+                if (now > expirationDate) {
+                    userModified = true;
+                    badgesRemovedCount++;
+                    this.logger.info(`Removing expired badge "${badgeDetails.name}" from user "${user.displayName}".`);
+                    return false; // Badge is expired, filter it out
+                }
+                
+                return true; // Badge is still valid
+            });
+
+            if (userModified) {
+                user.badges = validBadges;
+                await user.save();
+            }
+        }
+        this.logger.info(`Expired badge cleanup job finished. Removed ${badgesRemovedCount} badges.`);
+    }
+
+
     /**
      * Updates a user's profile information.
      * @param id The ID of the user to edit.
@@ -409,7 +457,7 @@ export class UserService implements IService {
     }
 
     public async getAllUsers() {
-        return await MUser.find().populate(['roles', 'proficiencies']);
+        return await MUser.find().populate(['roles', 'proficiencies',{ path: 'badges.badge' }]);
     }
 
     public async updateUserPreferences(userId: string, preferences: { theme: Theme }) {
@@ -432,31 +480,24 @@ export class UserService implements IService {
     }
 
     /**
-     * Assigns a badge to a user by embedding it in their document.
-     * Prevents adding a badge if one with the same name already exists for that user.
+     * Assigns a badge to a user by adding the badge id of the badge to an array of badges
      * @param userId The ID of the user.
-     * @param badgeData The full badge object to embed.
+     * @param badgeid of the badge 
      * @returns The updated user document.
      */
-    public async addBadgeToUser(userId: string, badgeData: IBadge): Promise<IUser> {
-        const user = await MUser.findById(userId);
-        if (!user) {
-            throw new Error("User not found.");
-        }
-        
-        // Prevent duplicate badges by name
-        const badgeExists = user.badges?.some(b => b.name === badgeData.name);
-        if (badgeExists) {
-            this.logger.info(`User ${userId} already has the badge "${badgeData.name}".`);
-            return user;
-        }
+    public async addBadgeToUser(userId: string, badgeId: string): Promise<IUser | null> {
+        const newUserBadge = {
+            badge: new Types.ObjectId(badgeId),
+            dateAdded: new Date()
+        };
 
-        return (await MUser.findByIdAndUpdate(
+        return MUser.findByIdAndUpdate(
             userId,
-            { $push: { badges: badgeData } },
+            { $push: { badges: newUserBadge } },
             { new: true }
-        ).populate('roles'))!;
+        ).populate([{ path: 'roles' }, { path: 'badges.badge' }]);
     }
+    
 
     /**
      * Removes a badge from a user.
@@ -464,14 +505,104 @@ export class UserService implements IService {
      * @param badgeId The ID of the badge to remove.
      * @returns The updated user document.
      */
-    public async removeBadgeFromUser(userId: string, badgeId: string): Promise<IUser> {
+    public async removeBadgeFromUser(userId: string, badgeId: string): Promise<IUser | null> {
+        return MUser.findByIdAndUpdate(
+            userId,
+            { $pull: { badges: { badge: new Types.ObjectId(badgeId) } } },
+            { new: true }
+        ).populate([{ path: 'roles' }, { path: 'badges.badge' }]);
+    }
+
+    // ===== RATE ADJUSTMENT MANAGEMENT =====
+
+    /**
+     * Add a rate adjustment to a user's history
+     * @param userId The ID of the user
+     * @param rateAdjustment The rate adjustment data
+     * @returns The updated user document
+     */
+    public async addRateAdjustment(userId: string, rateAdjustment: {
+        reason: string;
+        newRate: number;
+        effectiveDate: Date;
+        approvingManagerId: string;
+    }): Promise<IUser> {
         const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
 
-        user!.badges = user!.badges?.filter((badge) => badge._id.toString() !== badgeId);
+        // Get the approving manager's name for logging
+        const approvingManager = await MUser.findById(rateAdjustment.approvingManagerId);
+        const managerName = approvingManager?.displayName || 'Unknown Manager';
 
-        await user!.save(); 
+        // Add the rate adjustment to the user's history
+        user.rateAdjustments = user.rateAdjustments || [];
+        user.rateAdjustments.push({
+            reason: rateAdjustment.reason,
+            newRate: rateAdjustment.newRate,
+            effectiveDate: rateAdjustment.effectiveDate,
+            approvingManagerId: new Types.ObjectId(rateAdjustment.approvingManagerId)
+        });
 
-        return user!;
+        // Sort rate adjustments by effective date (most recent first)
+        user.rateAdjustments.sort((a, b) =>
+            new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
+        );
+
+        await user.save();
+
+        // Log the rate adjustment for audit trail
+        this.logger.info(`Rate adjustment added for user ${user.displayName} (${user.email})`, {
+            userId: user._id.toString(),
+            userEmail: user.email,
+            userName: user.displayName,
+            previousRate: user.rateAdjustments.length > 1 ? user.rateAdjustments[1].newRate : 'N/A',
+            newRate: rateAdjustment.newRate,
+            reason: rateAdjustment.reason,
+            effectiveDate: rateAdjustment.effectiveDate.toISOString(),
+            approvingManagerId: rateAdjustment.approvingManagerId,
+            approvingManagerName: managerName,
+            timestamp: new Date().toISOString()
+        });
+
+        return user;
+    }
+
+    /**
+     * Remove a rate adjustment from a user's history (for corrections)
+     * @param userId The ID of the user
+     * @param adjustmentIndex The index of the adjustment to remove
+     * @returns The updated user document
+     */
+    public async removeRateAdjustment(userId: string, adjustmentIndex: number): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        if (!user.rateAdjustments || adjustmentIndex >= user.rateAdjustments.length || adjustmentIndex < 0) {
+            throw new Error("Rate adjustment not found");
+        }
+
+        const removedAdjustment = user.rateAdjustments[adjustmentIndex];
+        user.rateAdjustments.splice(adjustmentIndex, 1);
+
+        await user.save();
+
+        // Log the removal for audit trail
+        this.logger.info(`Rate adjustment removed for user ${user.displayName} (${user.email})`, {
+            userId: user._id.toString(),
+            userEmail: user.email,
+            userName: user.displayName,
+            removedRate: removedAdjustment.newRate,
+            removedReason: removedAdjustment.reason,
+            removedEffectiveDate: removedAdjustment.effectiveDate.toISOString(),
+            adjustmentIndex,
+            timestamp: new Date().toISOString()
+        });
+
+        return user;
     }
 
 }

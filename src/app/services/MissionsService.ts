@@ -4,6 +4,7 @@ import { Singleton } from "../models/classes/Singleton";
 import MMission, { IMissions } from "../db/models/MMissions.model";
 import { Types } from "mongoose";
 import { EMissionStatus } from "../models/enums/EMissions.enum";
+import PayslipService from "./PayslipService";
 
 export class MissionService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -73,6 +74,23 @@ export class MissionService implements IService {
     }
 
     public async updateMission(missionId: string, updateData: Partial<IMissions>): Promise<IMissions | null> {
+        if (updateData.status && updateData.status == EMissionStatus.Achieved) {
+            const mission = await MMission.findById(missionId).populate('student', 'displayName');
+
+            if (!mission || mission.status == EMissionStatus.Achieved) return null;
+
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = (today.getMonth() + 1).toString().padStart(2, '0');
+            const payPeriod = `${year}-${month}`;
+
+            const payslip = await PayslipService.getOrCreateDraftPayslip(mission.tutor, payPeriod);
+
+            const amount = mission.hoursCompleted * mission.remuneration;
+
+            await PayslipService.addBonus(payslip.id, `Achieved Mission for ${(mission.student as unknown as {displayName: string}).displayName}`, amount);
+        }
+
         return MMission.findByIdAndUpdate(
             missionId,
             { $set: updateData },
@@ -91,6 +109,32 @@ export class MissionService implements IService {
     public async deleteMission(missionId: string): Promise<{ deletedCount?: number }> {
         const result = await MMission.deleteOne({ _id: missionId }).exec();
         return { deletedCount: result.deletedCount };
+    }
+   /**
+     * Finds a single mission by its bundleId and tutorId.
+     * @param bundleId The ID of the bundle.
+     * @param tutorId The ID of the tutor.
+     * @returns A promise that resolves to the found IMission document or null.
+     */
+    public async findMissionByBundleAndTutor(bundleId: string, tutorId: string): Promise<IMissions | null> {
+        return MMission.findOne({ 
+            bundleId: new Types.ObjectId(bundleId), 
+            tutor: new Types.ObjectId(tutorId) 
+        }).exec();
+    }
+    
+    /**
+     * Updates the hours of a mission.
+     * @param missionId The ID of the mission to update.
+     * @param hours The number of hours to the mission.
+     * @returns The updated mission.
+     */
+    public async updateMissionHours(missionId: string, hours: number): Promise<IMissions | null> {
+        return MMission.findByIdAndUpdate(
+            missionId,
+            { $set: { hoursCompleted: hours } },
+            { new: true }
+        );
     }
 }
 

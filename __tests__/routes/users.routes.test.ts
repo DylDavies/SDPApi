@@ -6,6 +6,12 @@ import { EUserType } from '../../src/app/models/enums/EUserType.enum';
 import { ELeave } from '../../src/app/models/enums/ELeave.enum';
 import IPayloadUser from '../../src/app/models/interfaces/IPayloadUser.interface';
 import { JwtPayload } from 'jsonwebtoken';
+import { Types } from 'mongoose';
+import { EPermission } from '../../src/app/models/enums/EPermission.enum';
+import MBadge from '../../src/app/db/models/MBadge.model';
+
+// Mock environment variables
+process.env.JWT_SECRET = 'test-jwt-secret';
 
 declare global {
     namespace Express {
@@ -17,6 +23,22 @@ declare global {
 
 // Mock the dependencies
 jest.mock('../../src/app/services/UserService');
+jest.mock('../../src/app/db/models/MBadge.model');
+
+jest.mock('../../src/app/middleware/auth.middleware', () => ({
+    authenticationMiddleware: jest.fn((req: Request, res: Response, next: NextFunction) => {
+        (req as any).user = {
+            id: new Types.ObjectId().toHexString(),
+            email: 'test@admin.com',
+            displayName: 'Test Admin',
+            firstLogin: false,
+            permissions: [EPermission.USERS_VIEW, EPermission.USERS_MANAGE_ROLES, EPermission.USERS_EDIT, EPermission.USERS_DELETE, EPermission.BADGES_MANAGE],
+            type: EUserType.Admin,
+        };
+        next();
+    }),
+}));
+
 jest.mock('../../src/app/middleware/permission.middleware', () => ({
     // Mock the hasPermission middleware to always call next()
     // This allows us to test the route handler logic in isolation
@@ -26,11 +48,6 @@ jest.mock('../../src/app/middleware/permission.middleware', () => ({
 const app = express();
 // Add middleware that our router expects
 app.use(express.json());
-// Add a mock user to the request object for the route handlers to use
-app.use((req, res, next) => {
-    req.user = { id: 'performingUserId', type: EUserType.Staff, email: 'mock@email.com', displayName: "mockName", firstLogin: false, permissions: [] };
-    next();
-});
 app.use('/api/users', usersRouter);
 
 describe('Users Router', () => {
@@ -68,7 +85,7 @@ describe('Users Router', () => {
 
             expect(response.status).toBe(200);
             expect(response.body).toEqual(updatedUser);
-            expect(UserService.assignRoleToUser).toHaveBeenCalledWith('performingUserId', 'targetUserId', 'role123', false);
+            expect(UserService.assignRoleToUser).toHaveBeenCalledWith(expect.any(String), 'targetUserId', 'role123', true);
         });
         
         it('should return 400 if roleId is not provided', async () => {
@@ -209,5 +226,34 @@ describe('Users Router', () => {
             expect(response.status).toBe(400);
         });
     });
-});
 
+    describe('POST /api/users/:userId/badges', () => {
+        it('should return 404 if badge does not exist', async () => {
+            (MBadge.findById as jest.Mock).mockResolvedValue(null);
+            const response = await request(app)
+                .post('/api/users/targetUserId/badges')
+                .send({ badgeId: 'badge123' });
+
+            expect(response.status).toBe(404);
+            expect(response.text).toBe('Badge not found');
+        });
+
+        it('should return 400 if badgeId is not provided', async () => {
+            const response = await request(app)
+                .post('/api/users/targetUserId/badges')
+                .send({});
+            
+            expect(response.status).toBe(400);
+            expect(response.text).toBe('Badge ID is required.');
+        });
+    });
+
+    describe('DELETE /api/users/:userId/badges/:badgeId', () => {
+        it('should return 403 on a service error', async () => {
+            (UserService.removeBadgeFromUser as jest.Mock).mockRejectedValue(new Error('DB Error'));
+            const response = await request(app).delete('/api/users/targetUserId/badges/badge123');
+            expect(response.status).toBe(403);
+            expect(response.body.message).toContain('Error removing badge');
+        });
+    });
+});

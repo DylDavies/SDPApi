@@ -14,6 +14,7 @@ import { attachUserMiddleware } from "./middleware/auth.middleware";
 import { ServiceManager } from "./services/ServiceManager";
 import { Singleton } from "./models/classes/Singleton";
 import SocketService from "./services/SocketService";
+import { startBadgeCleanupJob } from "./jobs/badgeCleanup";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -33,6 +34,9 @@ async function main() {
 
     // --- Serve Static Files ---
     app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+    // --- Start Scheduled Jobs ---
+    startBadgeCleanupJob();
 
     // --- Route Loading (can remain the same) ---
     logger.info("Loading routes...");
