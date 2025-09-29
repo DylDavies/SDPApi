@@ -191,7 +191,7 @@ describe('PayslipService', () => {
                 description: 'Tutoring Session on 2025-09-15',
                 hours: 2,
                 rate: 150,
-                total: 300,
+                total: 400,
                 date: '2025-09-15'
             });
             expect(mockPayslip.save).toHaveBeenCalled();

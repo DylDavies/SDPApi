@@ -4,8 +4,6 @@ import { Singleton } from "../models/classes/Singleton";
 import { Types } from "mongoose";
 import MExtraWork, { IExtraWork, EExtraWorkStatus } from "../db/models/MExtraWork.model";
 import PayslipService from "./PayslipService";
-import IPayloadUser from "../models/interfaces/IPayloadUser.interface";
-import { IPayslip } from "../models/interfaces/IPayslip.interface";
 
 export class ExtraWorkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -54,7 +52,7 @@ export class ExtraWorkService implements IService {
             const month = (work.dateCompleted!.getMonth() + 1).toString().padStart(2, '0');
             const payPeriod = `${year}-${month}`;
 
-            let payslip = await PayslipService.getOrCreateDraftPayslip(work.userId, payPeriod);
+            const payslip = await PayslipService.getOrCreateDraftPayslip(work.userId, payPeriod);
 
             const studentName = (work.studentId as unknown as {displayName: string}).displayName;
 

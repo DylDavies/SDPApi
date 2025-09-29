@@ -39,20 +39,45 @@ describe('RemarkService', () => {
             const entries = [{ field: 'notes', value: 'Great progress!' }];
             const mockTemplate = { _id: 'template-id', name: 'Active Template', isActive: true };
             const createdRemark = { _id: 'new-remark-id', event: eventId, entries, template: mockTemplate._id };
+            const mockEvent = {
+                remarked: false,
+                tutor: new Types.ObjectId(),
+                duration: 120,
+                startTime: new Date(),
+                subject: 'Math',
+                student: { displayName: 'Test Student' }
+            };
 
             MRemarkTemplateMock.findOne.mockResolvedValue(mockTemplate as any);
-            MEventMock.findById.mockResolvedValue({ remarked: false } as any);
+
+            // Mock findById chain with populate
+            const mockPopulate = jest.fn().mockResolvedValue(mockEvent);
+            MEventMock.findById.mockReturnValue({
+                populate: mockPopulate
+            } as any);
+
             (MRemarkMock.create as jest.Mock).mockResolvedValue(createdRemark);
             MEventMock.findByIdAndUpdate.mockResolvedValue({} as any);
 
+            // Mock UserService and PayslipService
+            const UserService = require('../../src/app/services/UserService').default;
+            const PayslipService = require('../../src/app/services/PayslipService').default;
+            jest.spyOn(UserService, 'getUser').mockResolvedValue({
+                rateAdjustments: [{ effectiveDate: new Date(), newRate: 200 }]
+            });
+            jest.spyOn(PayslipService, 'addCompletedEvent').mockResolvedValue(undefined);
+
             const remark = await remarkService.createRemark(eventId, entries);
 
+            expect(MEventMock.findById).toHaveBeenCalledWith(eventId);
+            expect(mockPopulate).toHaveBeenCalledWith('student', 'displayName');
             expect(MRemarkMock.create).toHaveBeenCalledWith({
                 event: eventId,
                 entries,
                 template: mockTemplate._id,
             });
             expect(MEventMock.findByIdAndUpdate).toHaveBeenCalledWith(eventId, { remarked: true, remark: createdRemark._id });
+            expect(PayslipService.addCompletedEvent).toHaveBeenCalled();
             expect(remark).toEqual(createdRemark);
         });
 
@@ -60,9 +85,14 @@ describe('RemarkService', () => {
             const eventId = 'some-event-id';
             const entries = [{ field: 'notes', value: 'Great progress!' }];
             const mockTemplate = { _id: 'template-id', name: 'Active Template', isActive: true };
-            
+
             MRemarkTemplateMock.findOne.mockResolvedValue(mockTemplate as any);
-            MEventMock.findById.mockResolvedValue({ remarked: true } as any); // Simulate event already remarked
+
+            // Mock findById chain with populate for already remarked event
+            const mockPopulate = jest.fn().mockResolvedValue({ remarked: true });
+            MEventMock.findById.mockReturnValue({
+                populate: mockPopulate
+            } as any);
 
             await expect(remarkService.createRemark(eventId, entries))
                 .rejects.toThrow("This event has already been remarked.");

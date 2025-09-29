@@ -4,6 +4,7 @@ import { Singleton } from "../models/classes/Singleton";
 import MMission, {IMissions} from "../db/models/MMissions.model"; // Make sure to create this model file
 import { Types } from "mongoose";
 import { EMissionStatus } from "../models/enums/EMissions.enum"; // Make sure to create this enum file
+import PayslipService from "./PayslipService";
 
 /**
  * A service for managing missions, which are tasks assigned to students.
@@ -97,6 +98,23 @@ export class MissionService implements IService {
      * @returns The updated mission.
      */
     public async updateMission(missionId: string, updateData: Partial<IMissions>): Promise<IMissions | null> {
+        if (updateData.status && updateData.status == EMissionStatus.Achieved) {
+            const mission = await MMission.findById(missionId).populate('student', 'displayName');
+
+            if (!mission || mission.status == EMissionStatus.Achieved) return null;
+
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = (today.getMonth() + 1).toString().padStart(2, '0');
+            const payPeriod = `${year}-${month}`;
+
+            const payslip = await PayslipService.getOrCreateDraftPayslip(mission.tutor, payPeriod);
+
+            const amount = mission.hoursCompleted * mission.remuneration;
+
+            await PayslipService.addBonus(payslip.id, `Achieved Mission for ${(mission.student as unknown as {displayName: string}).displayName}`, amount);
+        }
+
         return MMission.findByIdAndUpdate(
             missionId,
             { $set: updateData },
