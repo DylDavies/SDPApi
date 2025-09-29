@@ -3,7 +3,6 @@ import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MEvent, { IEvent } from "../db/models/MEvent.model";
 import MBundle from "../db/models/MBundle.model";
-
 /**
  * A service for managing calendar events.
  */
@@ -62,6 +61,8 @@ export class EventService implements IService {
             startTime,
             duration: durationInMinutes
         });
+
+      
 
         return newEvent;
     }

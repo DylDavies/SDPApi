@@ -210,4 +210,43 @@ describe('MissionService', () => {
       expect(result).toEqual(deleteResult);
     });
   });
+  describe('findMissionByBundleAndTutor', () => {
+     it('should find a mission by bundle and tutor ID', async () => {
+      const bundleId = new Types.ObjectId();
+      const tutorId = new Types.ObjectId();
+      const mockMission = { _id: new Types.ObjectId(), bundleId, tutor: tutorId };
+
+      const mockQuery = {
+        exec: jest.fn().mockResolvedValue(mockMission)
+      };
+        (MMission.findOne as jest.Mock).mockReturnValue(mockQuery);
+
+      const result = await missionService.findMissionByBundleAndTutor(bundleId.toHexString(), tutorId.toHexString());
+
+        expect(MMission.findOne).toHaveBeenCalledWith({
+          bundleId: bundleId,
+          tutor: tutorId
+        });
+        expect(mockQuery.exec).toHaveBeenCalled();
+        expect(result).toEqual(mockMission);
+  });
+ });
+ describe('updateMissionHours', () => {
+   it('should update the hours of a mission', async () => {
+      const missionId = new Types.ObjectId().toHexString();
+      const hours = 5;
+      const mockUpdatedMission = { _id: missionId, hoursCompleted: hours };
+
+      (MMission.findByIdAndUpdate as jest.Mock).mockResolvedValue(mockUpdatedMission);
+
+      const result = await missionService.updateMissionHours(missionId, hours);
+
+      expect(MMission.findByIdAndUpdate).toHaveBeenCalledWith(
+        missionId,
+        { $set: { hoursCompleted: hours } },
+        { new: true }
+      );
+      expect(result).toEqual(mockUpdatedMission);
+    });
+  });
 });
