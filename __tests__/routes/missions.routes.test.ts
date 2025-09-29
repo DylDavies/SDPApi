@@ -249,6 +249,46 @@ describe('Missions Router', () => {
             expect(res.text).toBe('Mission not found.');
         });
     });
+    describe('GET /api/missions/find/bundle/:bundleId/tutor/:tutorId', () => {
+        it('should find a mission by bundle and tutor ID and return 200 status', async () => {
+        (MissionsService.findMissionByBundleAndTutor as jest.Mock).mockResolvedValue(mockMission);
+            const bundleId = new Types.ObjectId();
+            const tutorId = new Types.ObjectId();
+
+            const res = await request(app).get(`/api/missions/find/bundle/${bundleId}/tutor/${tutorId}`);
+
+            expect(res.status).toBe(200);
+            expect(res.body).toBeDefined();
+            expect(MissionsService.findMissionByBundleAndTutor).toHaveBeenCalledWith(bundleId.toString(), tutorId.toString());
+            });
+    });
+    describe('PATCH /api/missions/:missionId/hours', () => {
+        it('should update mission hours and return 200 status', async () => {
+            const hours = 10;
+            const updatedMission = { ...mockMission, hoursCompleted: hours };
+            (MissionsService.updateMissionHours as jest.Mock).mockResolvedValue(updatedMission);
+
+            const res = await request(app)
+            .patch(`/api/missions/${mockMission._id}/hours`)
+            .send({ hours });
+
+            expect(res.status).toBe(200);
+            expect(res.body.hoursCompleted).toBe(hours);
+            expect(MissionsService.updateMissionHours).toHaveBeenCalledWith(mockMission._id.toString(), hours);
+        });
+
+        it('should return 404 if mission to update hours is not found', async () => {
+        (MissionsService.updateMissionHours as jest.Mock).mockResolvedValue(null);
+        const nonExistentId = new Types.ObjectId();
+
+        const res = await request(app)
+        .patch(`/api/missions/${nonExistentId}/hours`)
+        .send({ hours: 10 });
+
+        expect(res.status).toBe(404);
+        expect(res.text).toBe('Mission not found.');
+        });
+    });
         
 });
 

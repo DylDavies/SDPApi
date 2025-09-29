@@ -3,8 +3,6 @@ import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MEvent, { IEvent } from "../db/models/MEvent.model";
 import MBundle from "../db/models/MBundle.model";
-import { MissionService } from "./MissionsService";
-
 /**
  * A service for managing calendar events.
  */
