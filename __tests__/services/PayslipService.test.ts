@@ -351,4 +351,362 @@ describe('PayslipService', () => {
             await expect(payslipService.initialize()).resolves.toBeUndefined();
         });
     });
+
+    describe('getPayslipHistory', () => {
+        it('should return payslip history sorted by pay period', async () => {
+            const mockHistory = [
+                { ...mockPayslip, payPeriod: '2025-10' },
+                { ...mockPayslip, payPeriod: '2025-09' }
+            ];
+            MockedMPayslip.find.mockReturnValue({
+                sort: jest.fn().mockResolvedValue(mockHistory)
+            } as any);
+
+            const result = await payslipService.getPayslipHistory(mockUserId);
+
+            expect(MockedMPayslip.find).toHaveBeenCalledWith({ userId: mockUserId });
+            expect(result).toEqual(mockHistory);
+        });
+    });
+
+    describe('addQueryNote', () => {
+        it('should add a query note to payslip', async () => {
+            const payslipId = new Types.ObjectId();
+            const itemId = 'item-123';
+            const note = 'Query about this earning';
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.addQueryNote(payslipId, itemId, note);
+
+            expect(mockPayslip.notes).toHaveLength(1);
+            expect(mockPayslip.notes[0]).toMatchObject({
+                itemId,
+                note,
+                resolved: false
+            });
+            expect(mockPayslip.save).toHaveBeenCalled();
+        });
+
+        it('should throw error if payslip not found', async () => {
+            const payslipId = new Types.ObjectId();
+            MockedMPayslip.findById.mockResolvedValue(null);
+
+            await expect(
+                payslipService.addQueryNote(payslipId, 'item-123', 'note')
+            ).rejects.toThrow('Payslip not found');
+        });
+    });
+
+    describe('updateQueryNote', () => {
+        it('should update an existing query note', async () => {
+            const payslipId = new Types.ObjectId();
+            const queryId = new Types.ObjectId();
+            const updatedNote = 'Updated query note';
+            mockPayslip.notes = [
+                { _id: queryId, itemId: 'item-123', note: 'Old note', resolved: false }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.updateQueryNote(payslipId, queryId.toString(), updatedNote);
+
+            expect(mockPayslip.notes[0].note).toBe(updatedNote);
+            expect(mockPayslip.save).toHaveBeenCalled();
+        });
+
+        it('should throw error if query not found', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.notes = [];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.updateQueryNote(payslipId, 'invalid-id', 'note')
+            ).rejects.toThrow('Query not found');
+        });
+    });
+
+    describe('deleteQueryNote', () => {
+        it('should delete a query note', async () => {
+            const payslipId = new Types.ObjectId();
+            const queryId = new Types.ObjectId();
+            mockPayslip.notes = [
+                { _id: queryId, itemId: 'item-123', note: 'Note', resolved: false }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.deleteQueryNote(payslipId, queryId.toString());
+
+            expect(mockPayslip.notes).toHaveLength(0);
+            expect(mockPayslip.save).toHaveBeenCalled();
+        });
+
+        it('should throw error if query not found', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.notes = [];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.deleteQueryNote(payslipId, 'invalid-id')
+            ).rejects.toThrow('Query not found');
+        });
+    });
+
+    describe('resolveQueryNote', () => {
+        it('should mark a query note as resolved', async () => {
+            const payslipId = new Types.ObjectId();
+            const queryId = new Types.ObjectId();
+            mockPayslip.notes = [
+                { _id: queryId, itemId: 'item-123', note: 'Note', resolved: false }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.resolveQueryNote(payslipId, queryId.toString());
+
+            expect(mockPayslip.notes[0].resolved).toBe(true);
+            expect(mockPayslip.save).toHaveBeenCalled();
+        });
+
+        it('should throw error if query not found', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.notes = [];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.resolveQueryNote(payslipId, 'invalid-id')
+            ).rejects.toThrow('Query not found');
+        });
+    });
+
+    describe('addBonus', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should add a bonus to draft payslip and recalculate', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.bonuses = [];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.addBonus(payslipId, 'Performance Bonus', 1000);
+
+            expect(mockPayslip.bonuses).toHaveLength(1);
+            expect(mockPayslip.bonuses[0]).toMatchObject({
+                description: 'Performance Bonus',
+                amount: 1000
+            });
+            expect(mockPayslip.save).toHaveBeenCalled();
+        });
+
+        it('should throw error if payslip is not draft', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.status = EPayslipStatus.LOCKED;
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.addBonus(payslipId, 'Bonus', 500)
+            ).rejects.toThrow('Can only modify draft payslips');
+        });
+    });
+
+    describe('removeBonus', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should remove a bonus from draft payslip', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.bonuses = [
+                { description: 'Bonus 1', amount: 500 },
+                { description: 'Bonus 2', amount: 300 }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.removeBonus(payslipId, 0);
+
+            expect(mockPayslip.bonuses).toHaveLength(1);
+            expect(mockPayslip.bonuses[0].description).toBe('Bonus 2');
+        });
+
+        it('should throw error for invalid bonus index', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.bonuses = [{ description: 'Bonus', amount: 500 }];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.removeBonus(payslipId, 5)
+            ).rejects.toThrow('Invalid bonus index');
+        });
+    });
+
+    describe('addDeduction', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should add a deduction to draft payslip', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.deductions = [];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.addDeduction(payslipId, 'Medical Aid', 150);
+
+            expect(mockPayslip.deductions).toHaveLength(1);
+            expect(mockPayslip.deductions[0]).toMatchObject({
+                description: 'Medical Aid',
+                amount: 150
+            });
+        });
+
+        it('should initialize deductions array if undefined', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.deductions = undefined;
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.addDeduction(payslipId, 'Deduction', 100);
+
+            expect(Array.isArray(mockPayslip.deductions)).toBe(true);
+            expect(mockPayslip.deductions).toHaveLength(1);
+        });
+    });
+
+    describe('updateDeduction', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should update an existing deduction', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.deductions = [
+                { description: 'Old Deduction', amount: 100 }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.updateDeduction(payslipId, 0, 'Updated Deduction', 200);
+
+            expect(mockPayslip.deductions[0]).toMatchObject({
+                description: 'Updated Deduction',
+                amount: 200
+            });
+        });
+
+        it('should throw error for invalid deduction index', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.deductions = [{ description: 'Deduction', amount: 100 }];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.updateDeduction(payslipId, 10, 'New', 50)
+            ).rejects.toThrow('Invalid deduction index');
+        });
+    });
+
+    describe('removeDeduction', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should remove a deduction from payslip', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.deductions = [
+                { description: 'Deduction 1', amount: 100 },
+                { description: 'Deduction 2', amount: 50 }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.removeDeduction(payslipId, 0);
+
+            expect(mockPayslip.deductions).toHaveLength(1);
+            expect(mockPayslip.deductions[0].description).toBe('Deduction 2');
+        });
+    });
+
+    describe('addMiscEarning', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should add a misc earning to draft payslip', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.miscEarnings = [];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.addMiscEarning(payslipId, 'Travel Allowance', 500);
+
+            expect(mockPayslip.miscEarnings).toHaveLength(1);
+            expect(mockPayslip.miscEarnings[0]).toMatchObject({
+                description: 'Travel Allowance',
+                amount: 500
+            });
+        });
+
+        it('should initialize miscEarnings array if undefined', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.miscEarnings = undefined;
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.addMiscEarning(payslipId, 'Earning', 200);
+
+            expect(Array.isArray(mockPayslip.miscEarnings)).toBe(true);
+        });
+    });
+
+    describe('updateMiscEarning', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should update an existing misc earning', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.miscEarnings = [
+                { description: 'Old Earning', amount: 100 }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.updateMiscEarning(payslipId, 0, 'Updated Earning', 300);
+
+            expect(mockPayslip.miscEarnings[0]).toMatchObject({
+                description: 'Updated Earning',
+                amount: 300
+            });
+        });
+
+        it('should throw error for invalid misc earning index', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.miscEarnings = [{ description: 'Earning', amount: 100 }];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.updateMiscEarning(payslipId, 5, 'New', 50)
+            ).rejects.toThrow('Invalid misc earning index');
+        });
+    });
+
+    describe('removeMiscEarning', () => {
+        beforeEach(() => {
+            MockedMPayslip.find.mockResolvedValue([]);
+        });
+
+        it('should remove a misc earning from payslip', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.miscEarnings = [
+                { description: 'Earning 1', amount: 200 },
+                { description: 'Earning 2', amount: 100 }
+            ];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await payslipService.removeMiscEarning(payslipId, 1);
+
+            expect(mockPayslip.miscEarnings).toHaveLength(1);
+            expect(mockPayslip.miscEarnings[0].description).toBe('Earning 1');
+        });
+
+        it('should throw error for invalid misc earning index', async () => {
+            const payslipId = new Types.ObjectId();
+            mockPayslip.miscEarnings = [{ description: 'Earning', amount: 100 }];
+            MockedMPayslip.findById.mockResolvedValue(mockPayslip);
+
+            await expect(
+                payslipService.removeMiscEarning(payslipId, 10)
+            ).rejects.toThrow('Invalid misc earning index');
+        });
+    });
 });
