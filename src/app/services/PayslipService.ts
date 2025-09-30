@@ -61,12 +61,12 @@ export class PayslipService implements IService {
     }
 
     /**
-     * Finds the current month's draft payslip for a user, or creates one if it doesn't exist.
+     * Finds the current month's payslip for a user, or creates a draft one if it doesn't exist.
      * @param userId The ID of the user.
      * @param payPeriod The pay period string, e.g., "2025-09".
      */
     public async getOrCreateDraftPayslip(userId: Types.ObjectId, payPeriod: string) {
-        const existingPayslip = await MPayslip.findOne({ userId, payPeriod, status: EPayslipStatus.DRAFT });
+        const existingPayslip = await MPayslip.findOne({ userId, payPeriod });
 
         if (existingPayslip) {
             return existingPayslip;
@@ -97,6 +97,15 @@ export class PayslipService implements IService {
      */
     public async getDraftPayslip(userId: Types.ObjectId, payPeriod: string) {
         return await MPayslip.findOne({ userId, payPeriod, status: EPayslipStatus.DRAFT });
+    }
+
+    /**
+     * Finds the current month's payslip for a user without creating it.
+     * @param userId The ID of the user.
+     * @param payPeriod The pay period string, e.g., "2025-09".
+     */
+    public async getPayslip(userId: Types.ObjectId, payPeriod: string) {
+        return await MPayslip.findOne({ userId, payPeriod });
     }
 
     /**
@@ -224,6 +233,8 @@ export class PayslipService implements IService {
             throw new Error('Payslip not found');
         }
 
+        payslip.status = EPayslipStatus.DRAFT; // Reset status if changes are made
+
         payslip.notes.push({
             itemId,
             note,
@@ -245,6 +256,8 @@ export class PayslipService implements IService {
             throw new Error('Query not found');
         }
 
+        payslip.status = EPayslipStatus.DRAFT; // Reset status if changes are made
+
         queryNote.note = note;
         await payslip.save();
         return payslip;
@@ -261,6 +274,8 @@ export class PayslipService implements IService {
             throw new Error('Query not found');
         }
 
+        payslip.status = EPayslipStatus.DRAFT; // Reset status if changes are made
+
         payslip.notes.splice(queryIndex, 1);
         await payslip.save();
         return payslip;
@@ -276,6 +291,8 @@ export class PayslipService implements IService {
         if (!queryNote) {
             throw new Error('Query not found');
         }
+
+        payslip.status = EPayslipStatus.DRAFT; // Reset status if changes are made
 
         queryNote.resolved = true;
         await payslip.save();

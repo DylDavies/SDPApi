@@ -6,6 +6,7 @@ import MRemarkTemplate, { IRemarkTemplate, IRemarkField } from "../db/models/MRe
 import MEvent from "../db/models/MEvent.model";
 import PayslipService from "./PayslipService";
 import UserService from "./UserService";
+import IBadge from "../models/interfaces/IBadge.interface";
 
 export class RemarkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -67,11 +68,18 @@ export class RemarkService implements IService {
 
         await MEvent.findByIdAndUpdate(eventId, { remarked: true, remark: newRemark._id });
 
+        const user = await UserService.getUser(existingEvent!.tutor.toHexString());
+
         // Payment
-        const rate = (await UserService.getUser(existingEvent!.tutor.toHexString()))?.rateAdjustments
+        let rate = user?.rateAdjustments
             .sort((a, b) => new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime())[0]?.newRate;
 
         if (rate) {
+            // Add badge rates
+            const badges = user!.badges;
+
+            if (badges) rate += badges.map(b => (b.badge as unknown as IBadge).bonus).reduce((prev, curr) => prev + curr);
+
             await PayslipService.addCompletedEvent({
                 baseRate: 50,
                 quantity: existingEvent!.duration / 60,

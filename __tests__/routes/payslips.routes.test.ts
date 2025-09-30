@@ -14,6 +14,7 @@ const MOCK_USER_ID = new Types.ObjectId().toHexString();
 // Mock services and models
 const mockPayslipService = {
     getDraftPayslip: jest.fn(),
+    getPayslip: jest.fn(),
     getOrCreateDraftPayslip: jest.fn(),
     getPayslipById: jest.fn(),
     updatePayslipStatus: jest.fn(),
@@ -152,6 +153,7 @@ describe('Payslips Routes', () => {
 
         it('should return null if no draft payslip exists', async () => {
             mockPayslipService.getDraftPayslip.mockResolvedValue(null);
+            mockPayslipService.getPayslip.mockResolvedValue(null);
 
             const response = await request(app).get('/api/payslips/me');
 
