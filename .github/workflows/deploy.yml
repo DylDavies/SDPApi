@@ -42,7 +42,7 @@ jobs:
           echo "DO_SPACES_ACCESS_KEY_ID=${{ secrets.DO_SPACES_ACCESS_KEY_ID }}" >> .env
           echo "DO_SPACES_SECRET_ACCESS_KEY=${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}" >> .env
           echo "DO_SPACES_ENDPOINT=${{ secrets.DO_SPACES_ENDPOINT }}" >> .env
-          echo "EXTERNAL_API_BASE_URL=${{ secrets.DO_SPACES_BUCKET_NAME }}" >> .env
+          echo "DO_SPACES_BUCKET_NAME=${{ secrets.DO_SPACES_BUCKET_NAME }}" >> .env
           echo "DO_SPACES_REGION=${{ secrets.DO_SPACES_REGION }}" >> .env
 
       - name: Copy project files to server
