@@ -33,6 +33,17 @@ jobs:
           echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
           echo "FRONTEND_URL=${{ secrets.FRONTEND_URL }}" >> .env
           echo "EXTERNAL_API_BASE_URL=${{ secrets.EXTERNAL_API_BASE_URL }}" >> .env
+          echo "EMAIL_HOST=${{ secrets.EMAIL_HOST }}" >> .env
+          echo "EMAIL_PORT=${{ secrets.EMAIL_PORT }}" >> .env
+          echo "EMAIL_SECURE=${{ secrets.EMAIL_SECURE }}" >> .env
+          echo "EMAIL_USER=${{ secrets.EMAIL_USER }}" >> .env
+          echo "EMAIL_PASS=${{ secrets.EMAIL_PASS }}" >> .env
+          echo "EMAIL_FROM=${{ secrets.EMAIL_FROM }}" >> .env
+          echo "DO_SPACES_ACCESS_KEY_ID=${{ secrets.DO_SPACES_ACCESS_KEY_ID }}" >> .env
+          echo "DO_SPACES_SECRET_ACCESS_KEY=${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}" >> .env
+          echo "DO_SPACES_ENDPOINT=${{ secrets.DO_SPACES_ENDPOINT }}" >> .env
+          echo "EXTERNAL_API_BASE_URL=${{ secrets.DO_SPACES_BUCKET_NAME }}" >> .env
+          echo "DO_SPACES_REGION=${{ secrets.DO_SPACES_REGION }}" >> .env
 
       - name: Copy project files to server
         uses: appleboy/scp-action@master

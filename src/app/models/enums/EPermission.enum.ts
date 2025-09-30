@@ -33,7 +33,41 @@ export enum EPermission {
     LEAVE_MANAGE = "leave:manage",
 
     // Proficiency Management Permissions
-    PROFICIENCIES_MANAGE = 'proficiencies:manage'
+    PROFICIENCIES_MANAGE = 'proficiencies:manage',
+    // Extra Work Permissions
+    EXTRA_WORK_CREATE = 'extra_work:create',
+    EXTRA_WORK_VIEW = 'extra_work:view',
+    EXTRA_WORK_VIEW_ALL = 'extra_work:view_all',
+    EXTRA_WORK_EDIT = 'extra_work:edit',
+    EXTRA_WORK_APPROVE = 'extra_work:approve',
 
 
+    //Missions Management Permissions
+    MISSIONS_CREATE = 'missions:create',
+    MISSIONS_VIEW = 'missions:view',
+    MISSIONS_EDIT = 'missions:edit',
+    MISSIONS_DELETE = 'missions:delete',
+    MISSIONS_APPROVE = 'missions:approve',
+
+
+    // Sidebar Management
+    SIDEBAR_MANAGE = 'sidebar:manage',
+
+    // Badge Management Permissions
+    BADGES_CREATE = 'badges:create',
+    BADGES_MANAGE = 'badges:manage',
+    BADGES_VIEW = 'badges:view',
+    BADGES_VIEW_REQUIREMENTS = 'badges:view_requirements',
+    BADGES_MANAGE_REQUIREMENTS = 'badges:manage_requirements',
+
+    CAN_MANAGE_PAYSLIPS = 'payslips:manage',
+    CAN_VIEW_OWN_PAYSLIP = 'payslips:view_own',
+    CAN_MANAGE_PREAPPROVED_ITEMS = 'payslips:preapproved_items_manage',
+    CAN_ADJUST_RATES = 'payslips:rate_adjustment',
+
+    // Notifications View Permissions
+    NOTIFICATIONS_VIEW = 'notifications:view',
+    
+    // Remark management Permission
+    REMARKS_MANAGE = 'remarks:manage',
 }

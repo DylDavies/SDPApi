@@ -21,7 +21,24 @@ export class BundleService implements IService {
      * @returns A promise that resolves to an array of all bundles.
      */
     public async getBundles(): Promise<IBundle[]> {
-        return MBundle.find().populate('student', 'displayName').populate('subjects.tutor', 'displayName').exec();
+
+        return MBundle.find()
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName') // This populates the creator field
+            .exec();
+    }
+    /**
+ * Finds a single bundle by its ID and populates the student and tutor details.
+ * @param id The ID of the bundle to find.
+ * @returns A promise that resolves to the found IBundle document or null.
+ */
+    public async getBundleById(id: string): Promise<IBundle | null> {
+        return MBundle.findById(id)
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName')
+            .exec();
     }
 
     /**
@@ -41,17 +58,23 @@ export class BundleService implements IService {
     /**
      * Creates a new bundle for a single student with an initial set of subjects.
      * @param studentId The user ID for the student in the bundle.
-     * @param subjects An array of objects, each defining a subject, its tutor, and hours.
+     * @param subjects An array of objects, each defining a subject, its tutor, and duration.
      * @param creatorId The user ID of the person creating this bundle.
      * @returns The newly created bundle.
      */
-    public async createBundle(studentId: string, subjects: { subject: string, grade: string, tutor: string, hours: number }[], creatorId: string): Promise<IBundle> {
+    public async createBundle(studentId: string, subjects: { subject: string, grade: string, tutor: string, durationMinutes: number }[], creatorId: string): Promise<IBundle> {
         const studentObjectId = new Types.ObjectId(studentId);
         const creatorObjectId = new Types.ObjectId(creatorId);
 
+        // Map through subjects to convert tutor ID strings to ObjectIds
+        const formattedSubjects = subjects.map(subject => ({
+            ...subject,
+            tutor: new Types.ObjectId(subject.tutor)
+        }));
+
         const newBundle = new MBundle({
             student: studentObjectId,
-            subjects,
+            subjects: formattedSubjects, // Use the formatted array
             createdBy: creatorObjectId
         });
 
@@ -65,10 +88,14 @@ export class BundleService implements IService {
      * @param subject The subject details to add.
      * @returns The updated bundle.
      */
-    public async addSubjectToBundle(bundleId: string, subject: { subject: string, grade: string, tutor: string, hours: number }): Promise<IBundle | null> {
+    public async addSubjectToBundle(bundleId: string, subject: { subject: string, grade: string, tutor: string, durationMinutes: number }): Promise<IBundle | null> {
+        const subjectWithObjectId = {
+            ...subject,
+            tutor: new Types.ObjectId(subject.tutor)
+        };
         return MBundle.findByIdAndUpdate(
             bundleId,
-            { $push: { subjects: subject } },
+            { $push: { subjects: subjectWithObjectId } },
             { new: true }
         );
     }

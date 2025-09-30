@@ -1,13 +1,3 @@
-/**
- * Jest tests for the external staff API routes and keyAuth middleware.
- *
- * How to run:
- * 1. Make sure you have jest and supertest installed:
- * npm install --save-dev jest @types/jest ts-jest supertest @types/supertest
- * 2. Configure Jest in your package.json or jest.config.js.
- * 3. Run the tests:
- * npm test
- */
 import request from 'supertest';
 import express, { Express } from 'express';
 import externalRoutes from "../../src/app/routes/external/router";

@@ -13,6 +13,16 @@ import ISubject from "../models/interfaces/ISubject.interface";
 import { Theme } from "../models/types/theme.type";
 import { IRole } from "../db/models/MRole.model";
 import { EPermission } from "../models/enums/EPermission.enum";
+import IBadge from "../models/interfaces/IBadge.interface";
+import notificationService from "./NotificationService";
+
+const formatDate = (date: Date) => {
+    return new Date(date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+};
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -85,15 +95,108 @@ export class UserService implements IService {
     */
     public async updateLeaveRequestStatus(userId: string, leaveId: string, approved: ELeave.Approved | ELeave.Denied): Promise<IUser | null> {
         if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(leaveId)) {
-        this.logger.warn(`Invalid ID string provided to updateLeaveRequestStatus. User ID: "${userId}", Leave ID: "${leaveId}"`);
-        return null;
-    }
+            this.logger.warn(`Invalid ID string provided to updateLeaveRequestStatus. User ID: "${userId}", Leave ID: "${leaveId}"`);
+            return null;
+        }
 
-    return MUser.findOneAndUpdate(
-        { _id: userId, "leave._id": leaveId },
-        { $set: { "leave.$.approved": approved } },
-        { new: true }
-    );
+        const user = await MUser.findOne({ _id: userId, "leave._id": leaveId });
+        if (!user) {
+            this.logger.warn(`User or leave request not found for User ID: "${userId}", Leave ID: "${leaveId}"`);
+            return null;
+        }
+
+        const leaveRequest = user.leave.find(l => l._id.toString() === leaveId);
+        if (!leaveRequest) {
+            // This should theoretically not happen if the query above succeeds, but it's good practice
+            return null; 
+        }
+
+        const status = approved === ELeave.Approved ? 'Approved' : 'Denied';
+        const statusColor = approved === ELeave.Approved ? '#4CAF50' : '#F44336'; // Green for approved, Red for denied
+
+        const html = `
+        <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <meta name="color-scheme" content="light dark">
+                <meta name="supported-color-schemes" content="light dark">
+                <style>
+                    body { font-family: Roboto, "Helvetica Neue", sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+                    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+                    .header { background-color: #2855b6; padding: 20px; text-align: center; }
+                    .header img { width: 80px; }
+                    .content { padding: 30px; line-height: 1.6; color: #333; }
+                    .content h1 { font-size: 24px; color: #333; margin-top: 0; }
+                    .status-box { padding: 12px; text-align: center; border-radius: 4px; margin: 20px 0; font-size: 18px; font-weight: bold; color: #fff; }
+                    .details-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    .details-table td { padding: 8px; border-bottom: 1px solid #eaeaea; }
+                    .details-table td:first-child { font-weight: bold; width: 120px; }
+                    .footer { text-align: center; padding: 20px; font-size: 12px; color: #777; background-color: #f9f9f9; }
+                    .button { display: inline-block; padding: 12px 24px; margin-top: 20px; background-color: #2855b6; color: #ffffff !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
+
+                    @media (prefers-color-scheme: dark) {
+                        .container { background-color: #222222; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+                        .content { color: #eeeeee; }
+                        .content h1 { color: #eeeeee; }
+                        .details-table td { border-bottom-color: #444444; }
+                        .footer { background-color: #1a1a1a; color: #aaaaaa; }
+
+                        .button {
+                            background-color: #5c85d6 !important; /* A lighter, more visible blue */
+                            color: #ffffff !important;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <img src="https://tutorcore.works/assets/logo_circle.png" alt="Company Logo">
+                    </div>
+                    <div class="content">
+                        <h1>Leave Request Update</h1>
+                        <p>Hi ${user.displayName},</p>
+                        <p>There has been an update to your recent leave request. The status is now:</p>
+                        <div class="status-box" style="background-color: ${statusColor};">
+                            ${status}
+                        </div>
+                        <table class="details-table">
+                            <tr>
+                                <td>Reason:</td>
+                                <td>${leaveRequest.reason}</td>
+                            </tr>
+                            <tr>
+                                <td>From:</td>
+                                <td>${formatDate(leaveRequest.startDate)}</td>
+                            </tr>
+                            <tr>
+                                <td>To:</td>
+                                <td>${formatDate(leaveRequest.endDate)}</td>
+                            </tr>
+                        </table>
+                        <a href="${process.env.FRONTEND_URL}/dashboard/profile" class="button">View My Profile</a>
+                    </div>
+                    <div class="footer">
+                        <p>&copy; ${new Date().getFullYear()} TutorCore. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        await notificationService.createNotification(
+            userId, 
+            "Leave Request Updated", 
+            `Your leave request for "${leaveRequest.reason}" has been ${status}.`, 
+            true, 
+            html
+        );
+
+        leaveRequest.approved = approved;
+        user.markModified('leave');
+        return user.save();
     }
 
     /**
@@ -107,7 +210,10 @@ export class UserService implements IService {
             return null;
         }
 
-        const user = await MUser.findById(id).populate('roles') as IUser | null;
+        const user = await MUser.findById(id).populate([
+            { path: 'roles' },
+            { path: 'badges.badge' } 
+        ]);
 
         if (user) {
             const permissions: EPermission[] = [];
@@ -124,6 +230,51 @@ export class UserService implements IService {
         } else return null;
     }
     
+    /**
+     * A scheduled job that runs periodically
+     * It finds all users with temporary badges and removes any that have expired.
+     */
+    public async cleanupExpiredBadges(): Promise<void> {
+        this.logger.info('Starting expired badge cleanup job...');
+        const now = new Date();
+        
+        // Find all users who have at least one badge
+        const usersWithBadges = await MUser.find({ 'badges.0': { $exists: true } }).populate('badges.badge');
+
+        let badgesRemovedCount = 0;
+        for (const user of usersWithBadges) {
+            let userModified = false;
+            
+            const validBadges = user.badges!.filter(userBadge => {
+                const badgeDetails = userBadge.badge as unknown as IBadge;
+
+                // Keep permanent badges or if badge details are missing
+                if (!badgeDetails || badgeDetails.permanent || !badgeDetails.duration) {
+                    return true;
+                }
+
+                const expirationDate = new Date(userBadge.dateAdded);
+                expirationDate.setDate(expirationDate.getDate() + badgeDetails.duration);
+
+                if (now > expirationDate) {
+                    userModified = true;
+                    badgesRemovedCount++;
+                    this.logger.info(`Removing expired badge "${badgeDetails.name}" from user "${user.displayName}".`);
+                    return false; // Badge is expired, filter it out
+                }
+                
+                return true; // Badge is still valid
+            });
+
+            if (userModified) {
+                user.badges = validBadges;
+                await user.save();
+            }
+        }
+        this.logger.info(`Expired badge cleanup job finished. Removed ${badgesRemovedCount} badges.`);
+    }
+
+
     /**
      * Updates a user's profile information.
      * @param id The ID of the user to edit.
@@ -306,7 +457,7 @@ export class UserService implements IService {
     }
 
     public async getAllUsers() {
-        return await MUser.find().populate(['roles', 'proficiencies']);
+        return await MUser.find().populate(['roles', 'proficiencies',{ path: 'badges.badge' }]);
     }
 
     public async updateUserPreferences(userId: string, preferences: { theme: Theme }) {
@@ -326,6 +477,132 @@ export class UserService implements IService {
             return null;
         }
         return MUser.findByIdAndUpdate(id, { $set: { availability } }, { new: true, runValidators: true }).populate('roles');
+    }
+
+    /**
+     * Assigns a badge to a user by adding the badge id of the badge to an array of badges
+     * @param userId The ID of the user.
+     * @param badgeid of the badge 
+     * @returns The updated user document.
+     */
+    public async addBadgeToUser(userId: string, badgeId: string): Promise<IUser | null> {
+        const newUserBadge = {
+            badge: new Types.ObjectId(badgeId),
+            dateAdded: new Date()
+        };
+
+        return MUser.findByIdAndUpdate(
+            userId,
+            { $push: { badges: newUserBadge } },
+            { new: true }
+        ).populate([{ path: 'roles' }, { path: 'badges.badge' }]);
+    }
+    
+
+    /**
+     * Removes a badge from a user.
+     * @param userId The ID of the user.
+     * @param badgeId The ID of the badge to remove.
+     * @returns The updated user document.
+     */
+    public async removeBadgeFromUser(userId: string, badgeId: string): Promise<IUser | null> {
+        return MUser.findByIdAndUpdate(
+            userId,
+            { $pull: { badges: { badge: new Types.ObjectId(badgeId) } } },
+            { new: true }
+        ).populate([{ path: 'roles' }, { path: 'badges.badge' }]);
+    }
+
+    // ===== RATE ADJUSTMENT MANAGEMENT =====
+
+    /**
+     * Add a rate adjustment to a user's history
+     * @param userId The ID of the user
+     * @param rateAdjustment The rate adjustment data
+     * @returns The updated user document
+     */
+    public async addRateAdjustment(userId: string, rateAdjustment: {
+        reason: string;
+        newRate: number;
+        effectiveDate: Date;
+        approvingManagerId: string;
+    }): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        // Get the approving manager's name for logging
+        const approvingManager = await MUser.findById(rateAdjustment.approvingManagerId);
+        const managerName = approvingManager?.displayName || 'Unknown Manager';
+
+        // Add the rate adjustment to the user's history
+        user.rateAdjustments = user.rateAdjustments || [];
+        user.rateAdjustments.push({
+            reason: rateAdjustment.reason,
+            newRate: rateAdjustment.newRate,
+            effectiveDate: rateAdjustment.effectiveDate,
+            approvingManagerId: new Types.ObjectId(rateAdjustment.approvingManagerId)
+        });
+
+        // Sort rate adjustments by effective date (most recent first)
+        user.rateAdjustments.sort((a, b) =>
+            new Date(b.effectiveDate).getTime() - new Date(a.effectiveDate).getTime()
+        );
+
+        await user.save();
+
+        // Log the rate adjustment for audit trail
+        this.logger.info(`Rate adjustment added for user ${user.displayName} (${user.email})`, {
+            userId: user._id.toString(),
+            userEmail: user.email,
+            userName: user.displayName,
+            previousRate: user.rateAdjustments.length > 1 ? user.rateAdjustments[1].newRate : 'N/A',
+            newRate: rateAdjustment.newRate,
+            reason: rateAdjustment.reason,
+            effectiveDate: rateAdjustment.effectiveDate.toISOString(),
+            approvingManagerId: rateAdjustment.approvingManagerId,
+            approvingManagerName: managerName,
+            timestamp: new Date().toISOString()
+        });
+
+        return user;
+    }
+
+    /**
+     * Remove a rate adjustment from a user's history (for corrections)
+     * @param userId The ID of the user
+     * @param adjustmentIndex The index of the adjustment to remove
+     * @returns The updated user document
+     */
+    public async removeRateAdjustment(userId: string, adjustmentIndex: number): Promise<IUser> {
+        const user = await MUser.findById(userId);
+        if (!user) {
+            throw new Error("User not found");
+        }
+
+        if (!user.rateAdjustments || adjustmentIndex >= user.rateAdjustments.length || adjustmentIndex < 0) {
+            throw new Error("Rate adjustment not found");
+        }
+
+        const removedAdjustment = user.rateAdjustments[adjustmentIndex];
+        user.rateAdjustments.splice(adjustmentIndex, 1);
+
+        await user.save();
+
+        // Log the removal for audit trail
+        this.logger.info(`Rate adjustment removed for user ${user.displayName} (${user.email})`, {
+            userId: user._id.toString(),
+            userEmail: user.email,
+            userName: user.displayName,
+            removedRate: removedAdjustment.newRate,
+            removedReason: removedAdjustment.reason,
+            removedEffectiveDate: removedAdjustment.effectiveDate.toISOString(),
+            adjustmentIndex,
+            timestamp: new Date().toISOString()
+        });
+
+        return user;
     }
 
 }

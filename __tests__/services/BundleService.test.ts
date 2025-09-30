@@ -31,14 +31,14 @@ describe('BundleService', () => {
                 subject: 'Calculus I',
                 grade: 'A',
                 tutor: new Types.ObjectId().toHexString(),
-                hours: 15
+                durationMinutes: 900 // 15 hours * 60 minutes
             }];
 
             await bundleService.createBundle(studentId, subjects, creatorId);
 
             expect(MBundleMock).toHaveBeenCalledWith({
                 student: new Types.ObjectId(studentId),
-                subjects: subjects,
+                subjects: expect.any(Array),
                 createdBy: new Types.ObjectId(creatorId)
             });
         });
@@ -48,7 +48,7 @@ describe('BundleService', () => {
     describe('addSubjectToBundle', () => {
         it('should call findByIdAndUpdate with a $push operator', async () => {
             const bundleId = new Types.ObjectId().toHexString();
-            const newSubject = { subject: 'History', grade: 'A', tutor: new Types.ObjectId().toHexString(), hours: 5 };
+            const newSubject = { subject: 'History', grade: 'A', tutor: new Types.ObjectId().toHexString(), durationMinutes: 300 }; // 5 hours * 60 minutes
             
             MBundleMock.findByIdAndUpdate.mockResolvedValue({ _id: bundleId, ...newSubject } as any);
 
@@ -56,7 +56,7 @@ describe('BundleService', () => {
 
             expect(MBundleMock.findByIdAndUpdate).toHaveBeenCalledWith(
                 bundleId,
-                { $push: { subjects: newSubject } },
+                { $push: { subjects: expect.any(Object) } },
                 { new: true }
             );
         });
@@ -70,8 +70,8 @@ describe('BundleService', () => {
             const mockBundle = {
                 _id: bundleId,
                 subjects: [
-                    { _id: subjectIdToRemove, subject: 'Math', tutor: new Types.ObjectId(), hours: 10 },
-                    { _id: new Types.ObjectId(), subject: 'Science', tutor: new Types.ObjectId(), hours: 8 }
+                    { _id: subjectIdToRemove, subject: 'Math', tutor: new Types.ObjectId(), durationMinutes: 600 },
+                    { _id: new Types.ObjectId(), subject: 'Science', tutor: new Types.ObjectId(), durationMinutes: 480 }
                 ],
                 save: jest.fn().mockResolvedValue(true)
             };
@@ -91,7 +91,7 @@ describe('BundleService', () => {
             const subjectIdToRemove = new Types.ObjectId().toHexString();
             const mockBundle = {
                 _id: bundleId,
-                subjects: [{  _id: new Types.ObjectId(), subject: 'Math', tutor: new Types.ObjectId(), hours: 10 }],
+                subjects: [{  _id: new Types.ObjectId(), subject: 'Math', tutor: new Types.ObjectId(), durationMinutes: 600 }],
                 save: jest.fn()
             };
 

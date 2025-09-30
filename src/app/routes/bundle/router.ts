@@ -22,6 +22,26 @@ router.get("/", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
         res.status(500).json({ message: "Error fetching bundles", error: (error as Error).message });
     }
 });
+// GET /api/bundle/:bundleId - Get a single bundle by its ID
+router.get("/:bundleId", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
+    try {
+        const { bundleId } = req.params;
+
+        if (!Types.ObjectId.isValid(bundleId)) {
+            return res.status(400).send("Invalid bundle ID format.");
+        }
+
+        const bundle = await bundleService.getBundleById(bundleId); // Assumes you will create this service method
+
+        if (!bundle) {
+            return res.status(404).send("Bundle not found.");
+        }
+
+        res.status(200).json(bundle);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching bundle", error: (error as Error).message });
+    }
+});
 
 // POST /api/bundle - Create a new bundle
 router.post("/", hasPermission(EPermission.BUNDLES_CREATE), async (req, res) => {
@@ -66,11 +86,12 @@ router.patch("/:bundleId", hasPermission(EPermission.BUNDLES_EDIT), async (req, 
 // POST /api/bundle/:bundleId/subjects - Add a subject to a bundle
 router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), async (req, res) => {
     try {
+        
         const { bundleId } = req.params;
         const subject = req.body;
-
-        if (!subject || !subject.subject || !subject.tutor || subject.hours === undefined) {
-            return res.status(400).send("Missing required fields for subject: subject, tutor, hours");
+        
+        if (!subject || !subject.subject || !subject.tutor || subject.durationMinutes === undefined) {
+            return res.status(400).send("Missing required fields for subject: subject, tutor, durationMinutes");
         }
         if (!Types.ObjectId.isValid(bundleId)) {
             return res.status(400).send("Invalid bundle ID format.");
@@ -78,8 +99,8 @@ router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), asyn
         if (!Types.ObjectId.isValid(subject.tutor)) {
             return res.status(400).send("Invalid tutor ID format.");
         }
-        if (typeof subject.hours !== 'number' || subject.hours <= 0) {
-            return res.status(400).send("Hours must be a positive number.");
+        if (typeof subject.durationMinutes !== 'number' || subject.durationMinutes <= 0) {
+            return res.status(400).send("durationMinutes must be a positive number.");
         }
 
         const updatedBundle = await bundleService.addSubjectToBundle(bundleId, subject);

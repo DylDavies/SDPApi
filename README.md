@@ -288,6 +288,7 @@ The project runs on **Node.js**, a high-performance JavaScript runtime built on 
 - **Usage**: Used in frontend for consistent design elements such as navigation bars and buttons.
 - **Why?**: Speed up development and consistent UI design
 
+
 ## References
 
 - Infomaze. _Why choose MEAN stack for web app development?_ [Infomaze](https://www.infomazeelite.com/why-choose-mean-stack-for-web-app-development/)
