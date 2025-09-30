@@ -27,7 +27,7 @@ router.get(
     }
 );
 
-// Get the current user's draft payslip for the current month (without auto-creating)
+// Get the current user's payslip for the current month (without auto-creating)
 router.get(
     '/me',
     hasPermission(EPermission.CAN_VIEW_OWN_PAYSLIP),
@@ -40,7 +40,13 @@ router.get(
             const payPeriod = `${year}-${month}`;
 
             const userId = new Types.ObjectId(user.id);
-            const payslip = await payslipService.getDraftPayslip(userId, payPeriod);
+            let payslip = await payslipService.getDraftPayslip(userId, payPeriod);
+
+            if (!payslip) {
+                // Check for other existing payslips
+                payslip = await payslipService.getPayslip(userId, payPeriod);
+            }
+
             res.status(200).json(payslip); // Will be null if no payslip exists
         } catch (error) {
             const err = error as Error;

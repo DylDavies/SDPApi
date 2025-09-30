@@ -292,7 +292,7 @@ describe('UserService', () => {
                 })
             });
 
-            const result = await userService.addOrUpdateProficiency('user123', profData);
+            await userService.addOrUpdateProficiency('user123', profData);
 
             expect(mockUser.proficiencies.length).toBe(1);
             expect(mockUser.markModified).toHaveBeenCalledWith('proficiencies');
