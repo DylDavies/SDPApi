@@ -1,13 +1,17 @@
 import { EventService } from '../../src/app/services/EventService';
 import MEvent from '../../src/app/db/models/MEvent.model';
 import MBundle from '../../src/app/db/models/MBundle.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import { Types } from 'mongoose';
+import { EUserType } from '../../src/app/models/enums/EUserType.enum';
 
 jest.mock('../../src/app/db/models/MEvent.model');
 jest.mock('../../src/app/db/models/MBundle.model');
+jest.mock('../../src/app/db/models/MUser.model');
 
 const MEventMock = MEvent as jest.Mocked<typeof MEvent>;
 const MBundleMock = MBundle as jest.Mocked<typeof MBundle>;
+const MUserMock = MUser as jest.Mocked<typeof MUser>;
 
 describe('EventService', () => {
     let eventService: EventService;
@@ -72,10 +76,10 @@ describe('EventService', () => {
     });
 
     describe('getEvents', () => {
-        it('should retrieve events for a given user ID', async () => {
+        it('should retrieve events for a client user', async () => {
             const userId = new Types.ObjectId().toHexString();
-            const mockEvents = [{ subject: 'Math' }, { subject: 'English' }];
-            
+            const mockEvents = [{ subject: 'Math' }];
+            (MUserMock.findById as jest.Mock).mockResolvedValue({ type: EUserType.Client });
             (MEventMock.find as jest.Mock).mockReturnValue({
                 populate: jest.fn().mockReturnThis(),
                 exec: jest.fn().mockResolvedValue(mockEvents),
@@ -83,10 +87,29 @@ describe('EventService', () => {
 
             const result = await eventService.getEvents(userId);
 
-            expect(MEventMock.find).toHaveBeenCalledWith({ '$or': [{ tutor: userId }, { student: userId }] });
+            expect(MEventMock.find).toHaveBeenCalledWith({ student: userId });
+            expect(result).toEqual(mockEvents);
+        });
+
+        it('should retrieve events for a staff user', async () => {
+            const userId = new Types.ObjectId().toHexString();
+            const mockEvents = [{ subject: 'English' }];
+            (MUserMock.findById as jest.Mock).mockResolvedValue({ type: EUserType.Staff });
+            (MBundleMock.find as jest.Mock).mockResolvedValue([{ student: 'student1' }]);
+            (MEventMock.find as jest.Mock).mockReturnValue({
+                populate: jest.fn().mockReturnThis(),
+                exec: jest.fn().mockResolvedValue(mockEvents),
+            } as any);
+
+            const result = await eventService.getEvents(userId);
+
+            expect(MEventMock.find).toHaveBeenCalledWith({
+                $or: [{ tutor: userId }, { student: { $in: ['student1'] } }],
+            });
             expect(result).toEqual(mockEvents);
         });
     });
+
 
     describe('updateEvent', () => {
         it('should update an event and adjust the bundle duration', async () => {
@@ -107,7 +130,7 @@ describe('EventService', () => {
 
             expect(MEventMock.findById).toHaveBeenCalledWith(eventId);
             expect(MBundleMock.findById).toHaveBeenCalledWith(bundleId);
-            expect(mockBundle.subjects[0].durationMinutes).toBe(470); // 500 + 60 - 90
+            expect(mockBundle.subjects[0].durationMinutes).toBe(470); 
             expect(mockBundle.save).toHaveBeenCalledTimes(1);
             expect(result?.duration).toBe(90);
         });
