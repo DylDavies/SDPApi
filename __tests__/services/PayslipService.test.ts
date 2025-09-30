@@ -66,8 +66,7 @@ describe('PayslipService', () => {
 
             expect(MockedMPayslip.findOne).toHaveBeenCalledWith({
                 userId: mockUserId,
-                payPeriod: '2025-09',
-                status: EPayslipStatus.DRAFT
+                payPeriod: '2025-09'
             });
             expect(result).toEqual(mockPayslip);
         });
@@ -82,7 +81,6 @@ describe('PayslipService', () => {
             expect(MockedMPayslip.findOne).toHaveBeenCalledWith({
                 userId: mockUserId,
                 payPeriod: '2025-09',
-                status: EPayslipStatus.DRAFT
             });
             expect(mockNewPayslip.save).toHaveBeenCalled();
             expect(result).toEqual(mockNewPayslip);
@@ -107,6 +105,28 @@ describe('PayslipService', () => {
             MockedMPayslip.findOne.mockResolvedValue(null);
 
             const result = await payslipService.getDraftPayslip(mockUserId, '2025-09');
+
+            expect(result).toBeNull();
+        });
+    });
+
+    describe('getPayslip', () => {
+        it('should return payslip without creating one', async () => {
+            MockedMPayslip.findOne.mockResolvedValue(mockPayslip);
+
+            const result = await payslipService.getPayslip(mockUserId, '2025-09');
+
+            expect(MockedMPayslip.findOne).toHaveBeenCalledWith({
+                userId: mockUserId,
+                payPeriod: '2025-09'
+            });
+            expect(result).toEqual(mockPayslip);
+        });
+
+        it('should return null if no payslip exists', async () => {
+            MockedMPayslip.findOne.mockResolvedValue(null);
+
+            const result = await payslipService.getPayslip(mockUserId, '2025-09');
 
             expect(result).toBeNull();
         });
