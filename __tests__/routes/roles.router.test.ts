@@ -56,6 +56,13 @@ describe('Roles Router', () => {
             expect(response.status).toBe(400);
             expect(response.text).toContain('Missing required fields');
         });
+
+        it('should return 500 on service error', async () => {
+            (RoleService.createRole as jest.Mock).mockRejectedValue(new Error('DB Error'));
+            const response = await request(app).post('/api/roles').send(roleData);
+            expect(response.status).toBe(500);
+            expect(response.body.message).toContain('Error creating role');
+        });
     });
 
     describe('PATCH /api/roles', () => {
@@ -75,6 +82,13 @@ describe('Roles Router', () => {
             const { _id, ...incompleteData } = roleUpdateData;
             const response = await request(app).patch('/api/roles').send(incompleteData);
             expect(response.status).toBe(400);
+        });
+
+        it('should return 500 on service error', async () => {
+            (RoleService.updateRole as jest.Mock).mockRejectedValue(new Error('DB Error'));
+            const response = await request(app).patch('/api/roles').send(roleUpdateData);
+            expect(response.status).toBe(500);
+            expect(response.body.message).toContain('Error updating role');
         });
     });
 

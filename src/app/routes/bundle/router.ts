@@ -46,21 +46,57 @@ router.get("/:bundleId", hasPermission(EPermission.BUNDLES_VIEW), async (req, re
 // POST /api/bundle - Create a new bundle
 router.post("/", hasPermission(EPermission.BUNDLES_CREATE), async (req, res) => {
     try {
-        const { student, subjects } = req.body;
+        const { student, subjects, lessonLocation, manager, stakeholders } = req.body;
         const creator = req.user as IPayloadUser;
+
+        // console.log('Creating bundle with data:', JSON.stringify({
+        //     student,
+        //     subjects,
+        //     lessonLocation,
+        //     manager,
+        //     stakeholders
+        // }, null, 2));
 
         if (!student || !subjects || !Array.isArray(subjects)) {
             return res.status(400).send("Missing required fields: student, subjects");
         }
-        
+
         if (!Types.ObjectId.isValid(student)) {
             return res.status(400).send("Invalid student ID format.");
         }
 
-        const newBundle = await bundleService.createBundle(student, subjects, creator.id);
+        // Validate manager ID if provided
+        if (manager && !Types.ObjectId.isValid(manager)) {
+            return res.status(400).send("Invalid manager ID format.");
+        }
+
+        // Validate stakeholder IDs if provided
+        if (stakeholders && Array.isArray(stakeholders)) {
+            for (const stakeholderId of stakeholders) {
+                if (!Types.ObjectId.isValid(stakeholderId)) {
+                    return res.status(400).send(`Invalid stakeholder ID format: ${stakeholderId}`);
+                }
+            }
+        }
+
+        const newBundle = await bundleService.createBundle(
+            student,
+            subjects,
+            creator.id,
+            lessonLocation,
+            manager,
+            stakeholders
+        );
         res.status(201).json(newBundle);
     } catch (error) {
-        res.status(500).json({ message: "Error creating bundle", error: (error as Error).message });
+        //console.error('Error creating bundle:', error);
+        const errorMessage = (error as Error).message;
+        //const errorStack = (error as Error).stack;
+        //console.error('Error stack:', errorStack);
+        if (errorMessage.includes('Duplicate tutor-subject combination')) {
+            return res.status(400).json({ message: errorMessage });
+        }
+        res.status(500).json({ message: "Error creating bundle", error: errorMessage });
     }
 });
 
@@ -73,6 +109,21 @@ router.patch("/:bundleId", hasPermission(EPermission.BUNDLES_EDIT), async (req, 
         if (!Types.ObjectId.isValid(bundleId)) {
             return res.status(400).send("Invalid bundle ID format.");
         }
+
+        // Validate manager ID if provided in update
+        if (updateData.manager && !Types.ObjectId.isValid(updateData.manager)) {
+            return res.status(400).send("Invalid manager ID format.");
+        }
+
+        // Validate stakeholder IDs if provided in update
+        if (updateData.stakeholders && Array.isArray(updateData.stakeholders)) {
+            for (const stakeholderId of updateData.stakeholders) {
+                if (!Types.ObjectId.isValid(stakeholderId)) {
+                    return res.status(400).send(`Invalid stakeholder ID format: ${stakeholderId}`);
+                }
+            }
+        }
+
         const updatedBundle = await bundleService.updateBundle(bundleId, updateData);
         if (!updatedBundle) {
             return res.status(404).send("Bundle not found.");
@@ -109,7 +160,11 @@ router.post("/:bundleId/subjects", hasPermission(EPermission.BUNDLES_EDIT), asyn
         }
         res.status(200).json(updatedBundle);
     } catch (error) {
-        res.status(500).json({ message: "Error adding subject to bundle", error: (error as Error).message });
+        const errorMessage = (error as Error).message;
+        if (errorMessage.includes('Duplicate tutor-subject combination')) {
+            return res.status(400).json({ message: errorMessage });
+        }
+        res.status(500).json({ message: "Error adding subject to bundle", error: errorMessage });
     }
 });
 

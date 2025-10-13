@@ -84,6 +84,17 @@ describe('Badge Routes', () => {
             expect(response.status).toBe(400);
             expect(response.body.error).toBe('Missing badge data');
         });
+
+        it('should return 500 on service error', async () => {
+            mockBadgeService.addOrUpdatebadge.mockRejectedValue(new Error('Database error'));
+
+            const response = await request(app)
+                .post('/api/badges')
+                .send(badgeData);
+
+            expect(response.status).toBe(500);
+            expect(response.body.error).toBe('Failed to add or update one badge');
+        });
     });
 
     describe('GET /api/badges', () => {
@@ -100,6 +111,15 @@ describe('Badge Routes', () => {
             expect(response.body).toEqual(expect.any(Array));
             expect(response.body.length).toBe(2);
             expect(mockBadgeService.getBadges).toHaveBeenCalledTimes(1);
+        });
+
+        it('should return 500 on service error', async () => {
+            mockBadgeService.getBadges.mockRejectedValue(new Error('Database error'));
+
+            const response = await request(app).get('/api/badges');
+
+            expect(response.status).toBe(500);
+            expect(response.body.error).toBe('Failed to get all badges');
         });
     });
 

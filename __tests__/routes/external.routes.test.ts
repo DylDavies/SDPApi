@@ -121,7 +121,18 @@ describe('External Staff API', () => {
       expect(response.body[0].id).toBeDefined();
       expect(response.body[0].roles).toEqual(['Super Admin']);
       // Ensure sensitive data is NOT present
-      expect(response.body[0].type).toBeUndefined(); 
+      expect(response.body[0].type).toBeUndefined();
+    });
+
+    it('should return 500 when service throws error', async () => {
+      (MockUserService.getAllUsers as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/api/external/tutors')
+        .set('Authorization', `Bearer ${plainTextKey}`);
+
+      expect(response.status).toBe(500);
+      expect(response.body.message).toBe('Internal Server Error');
     });
   });
 
@@ -140,6 +151,17 @@ describe('External Staff API', () => {
       expect(response.status).toBe(200);
       expect(response.body).toHaveLength(2);
       expect(response.body[0].name).toBe('Calculus');
+    });
+
+    it('should return 500 when service throws error', async () => {
+      (MockProficiencyService.getProficiencies as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+      const response = await request(app)
+        .get('/api/external/proficiencies')
+        .set('Authorization', `Bearer ${plainTextKey}`);
+
+      expect(response.status).toBe(500);
+      expect(response.body.message).toBe('Internal Server Error');
     });
   });
 });
