@@ -49,7 +49,7 @@ export class RemarkService implements IService {
         return newTemplate;
     }
 
-    public async createRemark(eventId: string, entries: { field: string, value: any }[]): Promise<IRemark> {
+    public async createRemark(eventId: string, entries: { field: string; value: string | number | boolean | Date | null }[]): Promise<IRemark> {
         const activeTemplate = await this.getActiveTemplate();
         if (!activeTemplate) {
             throw new Error("No active remark template found.");
@@ -93,7 +93,7 @@ export class RemarkService implements IService {
         return newRemark;
     }
 
-    public async updateRemark(remarkId: string, entries: { field: string, value: any }[]): Promise<IRemark | null> {
+    public async updateRemark(remarkId: string, entries: { field: string; value: string | number | boolean | Date | null }[]): Promise<IRemark | null> {
         return MRemark.findByIdAndUpdate(remarkId, { entries }, { new: true }).populate('template');
     }
 

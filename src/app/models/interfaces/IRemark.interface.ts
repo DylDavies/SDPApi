@@ -12,7 +12,7 @@ export interface IRemark {
     remarkedAt: Date;
     entries: {
         field: string;
-        value: any;
+        value: string | number | boolean | Date | null;
     }[];
 }
 

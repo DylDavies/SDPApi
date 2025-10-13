@@ -26,13 +26,18 @@ const mockPayslipService = {
     deleteQueryNote: jest.fn(),
     resolveQueryNote: jest.fn(),
     addBonus: jest.fn(),
+    updateBonus: jest.fn(),
     removeBonus: jest.fn(),
+    updateEarning: jest.fn(),
     addDeduction: jest.fn(),
     updateDeduction: jest.fn(),
     removeDeduction: jest.fn(),
     addMiscEarning: jest.fn(),
     updateMiscEarning: jest.fn(),
     removeMiscEarning: jest.fn(),
+    getAllPayslips: jest.fn(),
+    addItemToPayslip: jest.fn(),
+    removeItemFromPayslip: jest.fn(),
 };
 
 const mockMPayslip = {
@@ -558,6 +563,483 @@ describe('Payslips Routes', () => {
 
             expect(response.status).toBe(403);
             expect(response.body.message).toBe('Unauthorized');
+        });
+    });
+
+    // ===== ADMIN ROUTES TESTS =====
+
+    describe('GET /api/payslips/', () => {
+        it('should return all payslips without filters (admin)', async () => {
+            const mockPayslips = [
+                { ...mockPayslip, save: undefined },
+                { ...mockPayslip, _id: new Types.ObjectId().toHexString(), save: undefined }
+            ];
+            mockPayslipService.getAllPayslips.mockResolvedValue(mockPayslips);
+
+            const response = await request(app).get('/api/payslips/');
+
+            expect(response.status).toBe(200);
+            expect(response.body).toHaveLength(2);
+            expect(mockPayslipService.getAllPayslips).toHaveBeenCalledWith({});
+        });
+
+        it('should return all payslips with status filter', async () => {
+            const mockPayslips = [{ ...mockPayslip, status: EPayslipStatus.DRAFT, save: undefined }];
+            mockPayslipService.getAllPayslips.mockResolvedValue(mockPayslips);
+
+            const response = await request(app).get('/api/payslips/?status=Draft');
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.getAllPayslips).toHaveBeenCalledWith({ status: 'Draft' });
+        });
+
+        it('should return all payslips with userId filter', async () => {
+            const userId = new Types.ObjectId().toHexString();
+            const mockPayslips = [{ ...mockPayslip, userId, save: undefined }];
+            mockPayslipService.getAllPayslips.mockResolvedValue(mockPayslips);
+
+            const response = await request(app).get(`/api/payslips/?userId=${userId}`);
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.getAllPayslips).toHaveBeenCalledWith({
+                userId: expect.any(Types.ObjectId)
+            });
+        });
+
+        it('should return all payslips with payPeriod filter', async () => {
+            const mockPayslips = [{ ...mockPayslip, payPeriod: '2025-09', save: undefined }];
+            mockPayslipService.getAllPayslips.mockResolvedValue(mockPayslips);
+
+            const response = await request(app).get('/api/payslips/?payPeriod=2025-09');
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.getAllPayslips).toHaveBeenCalledWith({ payPeriod: '2025-09' });
+        });
+
+        it('should handle errors when fetching all payslips', async () => {
+            mockPayslipService.getAllPayslips.mockRejectedValue(new Error('Database error'));
+
+            const response = await request(app).get('/api/payslips/');
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error fetching all payslips');
+        });
+    });
+
+    describe('POST /api/payslips/:id/approve', () => {
+        it('should approve payslip (change to Locked)', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const approvedPayslip = { ...mockPayslip, status: EPayslipStatus.LOCKED, save: undefined };
+            mockPayslipService.updatePayslipStatus.mockResolvedValue(approvedPayslip);
+
+            const response = await request(app).post(`/api/payslips/${payslipId}/approve`);
+
+            expect(response.status).toBe(200);
+            expect(response.body.status).toBe(EPayslipStatus.LOCKED);
+            expect(mockPayslipService.updatePayslipStatus).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'Locked',
+                expect.any(Types.ObjectId)
+            );
+        });
+
+        it('should handle errors when approving payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.updatePayslipStatus.mockRejectedValue(new Error('Service error'));
+
+            const response = await request(app).post(`/api/payslips/${payslipId}/approve`);
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error approving payslip');
+        });
+    });
+
+    describe('POST /api/payslips/:id/reject', () => {
+        it('should reject payslip (change to Draft)', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const rejectedPayslip = { ...mockPayslip, status: EPayslipStatus.DRAFT, save: undefined };
+            mockPayslipService.updatePayslipStatus.mockResolvedValue(rejectedPayslip);
+
+            const response = await request(app).post(`/api/payslips/${payslipId}/reject`);
+
+            expect(response.status).toBe(200);
+            expect(response.body.status).toBe(EPayslipStatus.DRAFT);
+            expect(mockPayslipService.updatePayslipStatus).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'Draft',
+                expect.any(Types.ObjectId)
+            );
+        });
+
+        it('should handle errors when rejecting payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.updatePayslipStatus.mockRejectedValue(new Error('Service error'));
+
+            const response = await request(app).post(`/api/payslips/${payslipId}/reject`);
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error rejecting payslip');
+        });
+    });
+
+    describe('POST /api/payslips/:id/mark-paid', () => {
+        it('should mark payslip as paid', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const paidPayslip = { ...mockPayslip, status: EPayslipStatus.PAID, save: undefined };
+            mockPayslipService.updatePayslipStatus.mockResolvedValue(paidPayslip);
+
+            const response = await request(app).post(`/api/payslips/${payslipId}/mark-paid`);
+
+            expect(response.status).toBe(200);
+            expect(response.body.status).toBe(EPayslipStatus.PAID);
+            expect(mockPayslipService.updatePayslipStatus).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'Paid',
+                expect.any(Types.ObjectId)
+            );
+        });
+
+        it('should handle errors when marking payslip as paid', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.updatePayslipStatus.mockRejectedValue(new Error('Service error'));
+
+            const response = await request(app).post(`/api/payslips/${payslipId}/mark-paid`);
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error marking payslip as paid');
+        });
+    });
+
+    describe('POST /api/payslips/:id/add-item', () => {
+        it('should add earning item to payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const itemData = { description: 'New Earning', baseRate: 100, hours: 10, rate: 15, total: 250, date: '2025-09-01' };
+            const updatedPayslip = { ...mockPayslip, save: undefined };
+            mockPayslipService.addItemToPayslip.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/add-item`)
+                .send({ itemType: 'earning', itemData });
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.addItemToPayslip).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'earning',
+                itemData
+            );
+        });
+
+        it('should add bonus item to payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const itemData = { description: 'Bonus', amount: 500 };
+            const updatedPayslip = { ...mockPayslip, save: undefined };
+            mockPayslipService.addItemToPayslip.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/add-item`)
+                .send({ itemType: 'bonus', itemData });
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.addItemToPayslip).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'bonus',
+                itemData
+            );
+        });
+
+        it('should return 400 for missing itemType', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const itemData = { description: 'Bonus', amount: 500 };
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/add-item`)
+                .send({ itemData });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('itemType and itemData are required');
+        });
+
+        it('should return 400 for invalid itemType', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const itemData = { description: 'Invalid', amount: 100 };
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/add-item`)
+                .send({ itemType: 'invalid', itemData });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('Invalid itemType');
+        });
+
+        it('should handle errors when adding item', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const itemData = { description: 'Bonus', amount: 500 };
+            mockPayslipService.addItemToPayslip.mockRejectedValue(new Error('Service error'));
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/add-item`)
+                .send({ itemType: 'bonus', itemData });
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error adding item to payslip');
+        });
+    });
+
+    describe('DELETE /api/payslips/:id/item/:itemId', () => {
+        it('should remove earning item from payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const updatedPayslip = { ...mockPayslip, save: undefined };
+            mockPayslipService.removeItemFromPayslip.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app).delete(`/api/payslips/${payslipId}/item/earning-0`);
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.removeItemFromPayslip).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'earning-0'
+            );
+        });
+
+        it('should remove bonus item from payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const updatedPayslip = { ...mockPayslip, save: undefined };
+            mockPayslipService.removeItemFromPayslip.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app).delete(`/api/payslips/${payslipId}/item/bonus-1`);
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.removeItemFromPayslip).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                'bonus-1'
+            );
+        });
+
+        it('should handle errors when removing item', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.removeItemFromPayslip.mockRejectedValue(new Error('Invalid item ID'));
+
+            const response = await request(app).delete(`/api/payslips/${payslipId}/item/invalid`);
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error removing item from payslip');
+        });
+    });
+
+    describe('PUT /api/payslips/:id/bonuses/:bonusIndex', () => {
+        it('should update bonus in payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const updatedPayslip = {
+                ...mockPayslip,
+                bonuses: [{ description: 'Updated Bonus', amount: 600 }],
+                save: undefined
+            };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.updateBonus.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/bonuses/0`)
+                .send({ description: 'Updated Bonus', amount: 600 });
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.updateBonus).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                0,
+                'Updated Bonus',
+                600
+            );
+        });
+
+        it('should return 400 for missing required fields', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/bonuses/0`)
+                .send({ description: 'Incomplete' });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('description and amount are required');
+        });
+
+        it('should return 404 if payslip not found', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.getPayslipById.mockResolvedValue(null);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/bonuses/0`)
+                .send({ description: 'Updated Bonus', amount: 600 });
+
+            expect(response.status).toBe(404);
+            expect(response.body.message).toBe('Payslip not found');
+        });
+
+        it('should return 403 for unauthorized user', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const otherUserPayslip = { ...mockPayslip, userId: new Types.ObjectId().toHexString() };
+            mockPayslipService.getPayslipById.mockResolvedValue(otherUserPayslip);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/bonuses/0`)
+                .send({ description: 'Updated Bonus', amount: 600 });
+
+            expect(response.status).toBe(403);
+            expect(response.body.message).toBe('Unauthorized');
+        });
+
+        it('should return 400 for invalid bonus index', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/bonuses/abc`)
+                .send({ description: 'Updated Bonus', amount: 600 });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('Invalid bonus index');
+        });
+    });
+
+    describe('PUT /api/payslips/:id/earnings/:earningIndex', () => {
+        it('should update earning in payslip', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const updatedPayslip = {
+                ...mockPayslip,
+                earnings: [{ description: 'Updated Earning', baseRate: 100, hours: 20, rate: 25, date: '2025-09-15', total: 600 }],
+                save: undefined
+            };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.updateEarning.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/earnings/0`)
+                .send({
+                    description: 'Updated Earning',
+                    baseRate: 100,
+                    hours: 20,
+                    rate: 25,
+                    date: '2025-09-15',
+                    total: 600
+                });
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.updateEarning).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                0,
+                'Updated Earning',
+                100,
+                20,
+                25,
+                '2025-09-15',
+                600
+            );
+        });
+
+        it('should return 400 for missing required fields', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/earnings/0`)
+                .send({ description: 'Incomplete', baseRate: 100 });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('description, baseRate, hours, rate, date, and total are required');
+        });
+
+        it('should return 404 if payslip not found', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            mockPayslipService.getPayslipById.mockResolvedValue(null);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/earnings/0`)
+                .send({
+                    description: 'Updated Earning',
+                    baseRate: 100,
+                    hours: 20,
+                    rate: 25,
+                    date: '2025-09-15',
+                    total: 600
+                });
+
+            expect(response.status).toBe(404);
+            expect(response.body.message).toBe('Payslip not found');
+        });
+
+        it('should return 403 for unauthorized user', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const otherUserPayslip = { ...mockPayslip, userId: new Types.ObjectId().toHexString() };
+            mockPayslipService.getPayslipById.mockResolvedValue(otherUserPayslip);
+
+            const response = await request(app)
+                .put(`/api/payslips/${payslipId}/earnings/0`)
+                .send({
+                    description: 'Updated Earning',
+                    baseRate: 100,
+                    hours: 20,
+                    rate: 25,
+                    date: '2025-09-15',
+                    total: 600
+                });
+
+            expect(response.status).toBe(403);
+            expect(response.body.message).toBe('Unauthorized');
+        });
+    });
+
+    describe('POST /api/payslips/:id/query/:queryId/resolve', () => {
+        it('should resolve query note with resolution note', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const queryId = new Types.ObjectId().toHexString();
+            const updatedPayslip = {
+                ...mockPayslip,
+                notes: [{
+                    _id: queryId,
+                    itemId: 'item123',
+                    note: 'Query',
+                    resolved: true,
+                    resolutionNote: 'Resolved successfully'
+                }],
+                save: undefined
+            };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.resolveQueryNote.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/query/${queryId}/resolve`)
+                .send({ resolutionNote: 'Resolved successfully' });
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.resolveQueryNote).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                queryId,
+                'Resolved successfully'
+            );
+        });
+
+        it('should resolve query note without resolution note', async () => {
+            const payslipId = new Types.ObjectId().toHexString();
+            const queryId = new Types.ObjectId().toHexString();
+            const updatedPayslip = {
+                ...mockPayslip,
+                notes: [{
+                    _id: queryId,
+                    itemId: 'item123',
+                    note: 'Query',
+                    resolved: true
+                }],
+                save: undefined
+            };
+            mockPayslipService.getPayslipById.mockResolvedValue(mockPayslip);
+            mockPayslipService.resolveQueryNote.mockResolvedValue(updatedPayslip);
+
+            const response = await request(app)
+                .post(`/api/payslips/${payslipId}/query/${queryId}/resolve`)
+                .send({});
+
+            expect(response.status).toBe(200);
+            expect(mockPayslipService.resolveQueryNote).toHaveBeenCalledWith(
+                expect.any(Types.ObjectId),
+                queryId,
+                undefined
+            );
         });
     });
 });

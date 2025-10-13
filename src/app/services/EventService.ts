@@ -106,10 +106,10 @@ export class EventService implements IService {
     /**
      * Updates an existing event and adjusts the bundle duration.
      * @param {string} eventId - The ID of the event to update.
-     * @param {any} eventData - The data to update the event with.
+     * @param {Partial<IEvent>} eventData - The data to update the event with.
      * @returns {Promise<IEvent | null>} The updated event.
      */
-    public async updateEvent(eventId: string, eventData: any): Promise<IEvent | null> {
+    public async updateEvent(eventId: string, eventData: Partial<IEvent>): Promise<IEvent | null> {
         const originalEvent = await MEvent.findById(eventId);
         if (!originalEvent) {
             throw new Error("Event not found.");

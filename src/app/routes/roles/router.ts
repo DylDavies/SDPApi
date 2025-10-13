@@ -65,8 +65,8 @@ router.patch('/:roleId/parent', hasPermission(EPermission.ROLES_EDIT), async (re
 
       const updatedRole = await roleService.updateRoleParent(roleId, newParentId);
       res.status(200).json(updatedRole);
-    } catch (error: any) {
-      res.status(400).json({ message: error.message });
+    } catch (error: unknown) {
+      res.status(400).json({ message: (error as Error).message });
     }
   }
 );
