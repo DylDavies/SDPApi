@@ -281,7 +281,7 @@ export class PayslipService implements IService {
         return payslip;
     }
 
-    public async resolveQueryNote(payslipId: Types.ObjectId, queryId: string) {
+    public async resolveQueryNote(payslipId: Types.ObjectId, queryId: string, resolutionNote?: string) {
         const payslip = await MPayslip.findById(payslipId);
         if (!payslip) {
             throw new Error('Payslip not found');
@@ -292,9 +292,12 @@ export class PayslipService implements IService {
             throw new Error('Query not found');
         }
 
-        payslip.status = EPayslipStatus.DRAFT; // Reset status if changes are made
+        payslip.status = EPayslipStatus.QUERY_HANDLED; // Set status to QueryHandled when resolved
 
         queryNote.resolved = true;
+        if (resolutionNote) {
+            queryNote.resolutionNote = resolutionNote;
+        }
         await payslip.save();
         return payslip;
     }
@@ -320,6 +323,29 @@ export class PayslipService implements IService {
         return await MPayslip.findById(payslipId);
     }
 
+    public async updateBonus(payslipId: Types.ObjectId, bonusIndex: number, description: string, amount: number) {
+        const payslip = await MPayslip.findById(payslipId);
+        if (!payslip) {
+            throw new Error('Payslip not found');
+        }
+
+        // Allow editing in DRAFT, QUERY, and QUERY_HANDLED statuses
+        const editableStatuses = [EPayslipStatus.DRAFT, EPayslipStatus.QUERY, EPayslipStatus.QUERY_HANDLED];
+        if (!editableStatuses.includes(payslip.status)) {
+            throw new Error('Can only modify payslips in Draft, Query, or Query Handled status');
+        }
+
+        if (bonusIndex < 0 || bonusIndex >= payslip.bonuses.length) {
+            throw new Error('Invalid bonus index');
+        }
+
+        payslip.bonuses[bonusIndex] = { description, amount };
+        await payslip.save();
+
+        await this.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
+        return await MPayslip.findById(payslipId);
+    }
+
     public async removeBonus(payslipId: Types.ObjectId, bonusIndex: number) {
         const payslip = await MPayslip.findById(payslipId);
         if (!payslip) {
@@ -335,6 +361,29 @@ export class PayslipService implements IService {
         }
 
         payslip.bonuses.splice(bonusIndex, 1);
+        await payslip.save();
+
+        await this.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
+        return await MPayslip.findById(payslipId);
+    }
+
+    public async updateEarning(payslipId: Types.ObjectId, earningIndex: number, description: string, baseRate: number, hours: number, rate: number, date: string, total: number) {
+        const payslip = await MPayslip.findById(payslipId);
+        if (!payslip) {
+            throw new Error('Payslip not found');
+        }
+
+        // Allow editing in DRAFT, QUERY, and QUERY_HANDLED statuses
+        const editableStatuses = [EPayslipStatus.DRAFT, EPayslipStatus.QUERY, EPayslipStatus.QUERY_HANDLED];
+        if (!editableStatuses.includes(payslip.status)) {
+            throw new Error('Can only modify payslips in Draft, Query, or Query Handled status');
+        }
+
+        if (earningIndex < 0 || earningIndex >= payslip.earnings.length) {
+            throw new Error('Invalid earning index');
+        }
+
+        payslip.earnings[earningIndex] = { description, baseRate, hours, rate, date, total };
         await payslip.save();
 
         await this.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
@@ -464,6 +513,108 @@ export class PayslipService implements IService {
         await payslip.save();
 
         await this.recalculatePayslip(payslip._id as unknown as Types.ObjectId);
+        return await MPayslip.findById(payslipId);
+    }
+
+    // ===== ADMIN METHODS =====
+
+    /**
+     * Gets all payslips in the system (admin only).
+     * @param filters Optional filters for status, userId, or payPeriod.
+     */
+    public async getAllPayslips(filters?: { status?: EPayslipStatus; userId?: Types.ObjectId; payPeriod?: string }) {
+        const query: { status?: EPayslipStatus; userId?: Types.ObjectId; payPeriod?: string } = {};
+        if (filters?.status) query.status = filters.status;
+        if (filters?.userId) query.userId = filters.userId;
+        if (filters?.payPeriod) query.payPeriod = filters.payPeriod;
+
+        return await MPayslip.find(query)
+            .populate('userId', 'displayName email')
+            .sort({ payPeriod: -1, userId: 1 });
+    }
+
+    /**
+     * Adds an item (earning or deduction) to a payslip (admin only).
+     * @param payslipId The ID of the payslip.
+     * @param itemType 'earning', 'miscEarning', 'bonus', or 'deduction'.
+     * @param itemData The item data.
+     */
+    public async addItemToPayslip(
+        payslipId: Types.ObjectId,
+        itemType: 'earning' | 'miscEarning' | 'bonus' | 'deduction',
+        itemData: { description: string; amount?: number; baseRate?: number; hours?: number; rate?: number; date?: string; total?: number }
+    ) {
+        const payslip = await MPayslip.findById(payslipId);
+        if (!payslip) {
+            throw new Error('Payslip not found');
+        }
+
+        switch (itemType) {
+            case 'earning':
+                payslip.earnings.push(itemData as { description: string; baseRate: number; hours: number; rate: number; total: number; date: string; });
+                break;
+            case 'miscEarning':
+                if (!payslip.miscEarnings) payslip.miscEarnings = [];
+                payslip.miscEarnings.push(itemData as { description: string; amount: number; });
+                break;
+            case 'bonus':
+                if (!payslip.bonuses) payslip.bonuses = [];
+                payslip.bonuses.push(itemData as { description: string; amount: number; });
+                break;
+            case 'deduction':
+                if (!payslip.deductions) payslip.deductions = [];
+                payslip.deductions.push(itemData as { description: string; amount: number; });
+                break;
+            default:
+                throw new Error('Invalid item type');
+        }
+
+        await payslip.save();
+        await this.recalculatePayslip(payslipId);
+        return await MPayslip.findById(payslipId);
+    }
+
+    /**
+     * Removes an item from a payslip by itemId (admin only).
+     * @param payslipId The ID of the payslip.
+     * @param itemId The ID of the item to remove (format: type-index, e.g., 'earning-0').
+     */
+    public async removeItemFromPayslip(payslipId: Types.ObjectId, itemId: string) {
+        const payslip = await MPayslip.findById(payslipId);
+        if (!payslip) {
+            throw new Error('Payslip not found');
+        }
+
+        const [itemType, indexStr] = itemId.split('-');
+        const index = parseInt(indexStr, 10);
+
+        if (isNaN(index) || index < 0) {
+            throw new Error('Invalid item ID format');
+        }
+
+        switch (itemType) {
+            case 'earning':
+                if (index >= payslip.earnings.length) throw new Error('Invalid earning index');
+                payslip.earnings.splice(index, 1);
+                break;
+            case 'miscEarning':
+                if (index >= payslip.miscEarnings.length) throw new Error('Invalid misc earning index');
+                payslip.miscEarnings.splice(index, 1);
+                break;
+            case 'bonus':
+                if (index >= payslip.bonuses.length) throw new Error('Invalid bonus index');
+                payslip.bonuses.splice(index, 1);
+                break;
+            case 'deduction':
+                if (index >= payslip.deductions.length) throw new Error('Invalid deduction index');
+                payslip.deductions.splice(index, 1);
+                break;
+            default:
+                throw new Error('Invalid item type');
+        }
+
+        await payslip.save();
+        await this.recalculatePayslip(payslipId);
         return await MPayslip.findById(payslipId);
     }
 }

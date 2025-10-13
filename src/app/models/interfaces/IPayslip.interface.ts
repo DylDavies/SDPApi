@@ -35,6 +35,7 @@ export interface IPayslip {
         itemId: string;
         note: string;
         resolved: boolean;
+        resolutionNote?: string;
     }[];
     history: {
         status: EPayslipStatus;

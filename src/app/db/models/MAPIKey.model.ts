@@ -30,8 +30,8 @@ ApiKeySchema.pre<IApiKey>('save', async function (next) {
     const salt = await bcrypt.genSalt(10);
     this.key = await bcrypt.hash(this.key, salt);
     next();
-  } catch (error: any) {
-    next(error);
+  } catch (error: unknown) {
+    next(error as Error);
   }
 });
 

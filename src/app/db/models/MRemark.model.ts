@@ -2,7 +2,7 @@ import { Schema, model, Document, Types } from 'mongoose';
 
 interface IRemarkEntry {
     field: string;
-    value: any;
+    value: string | number | boolean | Date | null;
 }
 
 export interface IRemark extends Document {

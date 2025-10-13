@@ -3,6 +3,7 @@ import PayslipService from '../../services/PayslipService';
 import { authenticationMiddleware } from '../../middleware/auth.middleware';
 import { hasPermission } from '../../middleware/permission.middleware';
 import { EPermission } from '../../models/enums/EPermission.enum';
+import { EPayslipStatus } from '../../models/enums/EPayslipStatus.enum';
 import { Types } from 'mongoose';
 import IPayloadUser from '../../models/interfaces/IPayloadUser.interface';
 import UserService from '../../services/UserService';
@@ -11,6 +12,149 @@ const router = Router();
 const payslipService = PayslipService;
 
 router.use(authenticationMiddleware);
+
+// ===== ADMIN ROUTES =====
+
+// Get all payslips (admin only)
+router.get(
+    '/',
+    hasPermission(EPermission.CAN_MANAGE_PAYSLIPS),
+    async (req, res) => {
+        try {
+            const { status, userId, payPeriod } = req.query;
+            const filters: { status?: EPayslipStatus; userId?: Types.ObjectId; payPeriod?: string } = {};
+
+            if (status) filters.status = status as EPayslipStatus;
+            if (userId) filters.userId = new Types.ObjectId(userId as string);
+            if (payPeriod) filters.payPeriod = payPeriod as string;
+
+            const payslips = await payslipService.getAllPayslips(filters);
+            res.status(200).json(payslips);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error fetching all payslips', error: err.message });
+        }
+    }
+);
+
+// Approve payslip (change from StaffApproved to Locked)
+router.post(
+    '/:id/approve',
+    hasPermission(EPermission.CAN_MANAGE_PAYSLIPS),
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = req.user as IPayloadUser;
+
+            const updatedPayslip = await payslipService.updatePayslipStatus(
+                new Types.ObjectId(id),
+                EPayslipStatus.LOCKED,
+                new Types.ObjectId(user.id)
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error approving payslip', error: err.message });
+        }
+    }
+);
+
+// Reject payslip (change from StaffApproved back to Draft)
+router.post(
+    '/:id/reject',
+    hasPermission(EPermission.CAN_MANAGE_PAYSLIPS),
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = req.user as IPayloadUser;
+
+            const updatedPayslip = await payslipService.updatePayslipStatus(
+                new Types.ObjectId(id),
+                EPayslipStatus.DRAFT,
+                new Types.ObjectId(user.id)
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error rejecting payslip', error: err.message });
+        }
+    }
+);
+
+// Mark payslip as paid (change from Locked to Paid)
+router.post(
+    '/:id/mark-paid',
+    hasPermission(EPermission.CAN_MANAGE_PAYSLIPS),
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = req.user as IPayloadUser;
+
+            const updatedPayslip = await payslipService.updatePayslipStatus(
+                new Types.ObjectId(id),
+                EPayslipStatus.PAID,
+                new Types.ObjectId(user.id)
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error marking payslip as paid', error: err.message });
+        }
+    }
+);
+
+// Add item to payslip (admin only)
+router.post(
+    '/:id/add-item',
+    hasPermission(EPermission.CAN_MANAGE_PAYSLIPS),
+    async (req, res) => {
+        try {
+            const { id } = req.params;
+            const { itemType, itemData } = req.body;
+
+            if (!itemType || !itemData) {
+                return res.status(400).json({ message: 'itemType and itemData are required' });
+            }
+
+            const validTypes = ['earning', 'miscEarning', 'bonus', 'deduction'];
+            if (!validTypes.includes(itemType)) {
+                return res.status(400).json({ message: 'Invalid itemType' });
+            }
+
+            const updatedPayslip = await payslipService.addItemToPayslip(
+                new Types.ObjectId(id),
+                itemType,
+                itemData
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error adding item to payslip', error: err.message });
+        }
+    }
+);
+
+// Remove item from payslip (admin only)
+router.delete(
+    '/:id/item/:itemId',
+    hasPermission(EPermission.CAN_MANAGE_PAYSLIPS),
+    async (req, res) => {
+        try {
+            const { id, itemId } = req.params;
+
+            const updatedPayslip = await payslipService.removeItemFromPayslip(
+                new Types.ObjectId(id),
+                itemId
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error removing item from payslip', error: err.message });
+        }
+    }
+);
+
+// ===== USER ROUTES =====
 
 // NEW ROUTE: Get all payslips for the logged-in user
 router.get(
@@ -282,6 +426,7 @@ router.post(
     async (req, res) => {
         try {
             const { id, queryId } = req.params;
+            const { resolutionNote } = req.body;
             const user = req.user as IPayloadUser;
 
             const payslip = await payslipService.getPayslipById(id);
@@ -299,7 +444,8 @@ router.post(
 
             const updatedPayslip = await payslipService.resolveQueryNote(
                 new Types.ObjectId(id),
-                queryId
+                queryId,
+                resolutionNote
             );
 
             res.status(200).json(updatedPayslip);
@@ -347,6 +493,49 @@ router.post(
     }
 );
 
+// Update a bonus in a payslip
+router.put(
+    '/:id/bonuses/:bonusIndex',
+    hasPermission(EPermission.CAN_VIEW_OWN_PAYSLIP),
+    async (req, res) => {
+        try {
+            const { id, bonusIndex } = req.params;
+            const { description, amount } = req.body;
+            const user = req.user as IPayloadUser;
+
+            if (!description || amount === undefined || amount === null) {
+                return res.status(400).json({ message: 'description and amount are required' });
+            }
+
+            const payslip = await payslipService.getPayslipById(id);
+            if (!payslip) {
+                return res.status(404).json({ message: 'Payslip not found' });
+            }
+
+            // Check if user owns this payslip
+            if (payslip.userId.toString() !== user.id) {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
+
+            const index = parseInt(bonusIndex, 10);
+            if (isNaN(index)) {
+                return res.status(400).json({ message: 'Invalid bonus index' });
+            }
+
+            const updatedPayslip = await payslipService.updateBonus(
+                new Types.ObjectId(id),
+                index,
+                description,
+                amount
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error updating bonus', error: err.message });
+        }
+    }
+);
+
 // Remove a bonus from a payslip
 router.delete(
     '/:id/bonuses/:bonusIndex',
@@ -379,6 +568,55 @@ router.delete(
         } catch (error) {
             const err = error as Error;
             res.status(500).json({ message: 'Error removing bonus', error: err.message });
+        }
+    }
+);
+
+// ===== EARNINGS CRUD OPERATIONS =====
+
+// Update an earning in a payslip
+router.put(
+    '/:id/earnings/:earningIndex',
+    hasPermission(EPermission.CAN_VIEW_OWN_PAYSLIP),
+    async (req, res) => {
+        try {
+            const { id, earningIndex } = req.params;
+            const { description, baseRate, hours, rate, date, total } = req.body;
+            const user = req.user as IPayloadUser;
+
+            if (!description || baseRate === undefined || hours === undefined || rate === undefined || !date || total === undefined) {
+                return res.status(400).json({ message: 'description, baseRate, hours, rate, date, and total are required' });
+            }
+
+            const payslip = await payslipService.getPayslipById(id);
+            if (!payslip) {
+                return res.status(404).json({ message: 'Payslip not found' });
+            }
+
+            // Check if user owns this payslip
+            if (payslip.userId.toString() !== user.id) {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
+
+            const index = parseInt(earningIndex, 10);
+            if (isNaN(index)) {
+                return res.status(400).json({ message: 'Invalid earning index' });
+            }
+
+            const updatedPayslip = await payslipService.updateEarning(
+                new Types.ObjectId(id),
+                index,
+                description,
+                baseRate,
+                hours,
+                rate,
+                date,
+                total
+            );
+            res.status(200).json(updatedPayslip);
+        } catch (error) {
+            const err = error as Error;
+            res.status(500).json({ message: 'Error updating earning', error: err.message });
         }
     }
 );

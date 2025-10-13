@@ -35,6 +35,7 @@ const PayslipSchema = new Schema({
         itemId: String,
         note: String,
         resolved: Boolean,
+        resolutionNote: String,
     }],
     history: [{
         status: String,
