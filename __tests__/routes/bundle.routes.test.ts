@@ -100,7 +100,110 @@ describe('Bundle Routes', () => {
             expect(response.status).toBe(201);
             expect(response.body).toEqual(expect.objectContaining({ _id: 'new-bundle-id' }));
             // We get the creator ID from the mocked middleware
-            expect(mockBundleService.createBundle).toHaveBeenCalledWith(bundleData.student, bundleData.subjects, expect.any(String));
+            expect(mockBundleService.createBundle).toHaveBeenCalledWith(
+                bundleData.student,
+                bundleData.subjects,
+                expect.any(String),
+                undefined,
+                undefined,
+                undefined
+            );
+        });
+
+        it('should create a bundle with lessonLocation', async () => {
+            const bundleWithLocation = {
+                ...bundleData,
+                lessonLocation: 'Library Room 101'
+            };
+            mockBundleService.createBundle.mockResolvedValue({ ...bundleWithLocation, _id: 'new-bundle-id' });
+
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(bundleWithLocation);
+
+            expect(response.status).toBe(201);
+            expect(mockBundleService.createBundle).toHaveBeenCalledWith(
+                bundleData.student,
+                bundleData.subjects,
+                expect.any(String),
+                'Library Room 101',
+                undefined,
+                undefined
+            );
+        });
+
+        it('should create a bundle with manager', async () => {
+            const managerId = new Types.ObjectId().toHexString();
+            const bundleWithManager = {
+                ...bundleData,
+                manager: managerId
+            };
+            mockBundleService.createBundle.mockResolvedValue({ ...bundleWithManager, _id: 'new-bundle-id' });
+
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(bundleWithManager);
+
+            expect(response.status).toBe(201);
+            expect(mockBundleService.createBundle).toHaveBeenCalledWith(
+                bundleData.student,
+                bundleData.subjects,
+                expect.any(String),
+                undefined,
+                managerId,
+                undefined
+            );
+        });
+
+        it('should create a bundle with stakeholders', async () => {
+            const stakeholderIds = [new Types.ObjectId().toHexString(), new Types.ObjectId().toHexString()];
+            const bundleWithStakeholders = {
+                ...bundleData,
+                stakeholders: stakeholderIds
+            };
+            mockBundleService.createBundle.mockResolvedValue({ ...bundleWithStakeholders, _id: 'new-bundle-id' });
+
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(bundleWithStakeholders);
+
+            expect(response.status).toBe(201);
+            expect(mockBundleService.createBundle).toHaveBeenCalledWith(
+                bundleData.student,
+                bundleData.subjects,
+                expect.any(String),
+                undefined,
+                undefined,
+                stakeholderIds
+            );
+        });
+
+        it('should return 400 for invalid manager ID format', async () => {
+            const invalidData = {
+                ...bundleData,
+                manager: 'invalid-id'
+            };
+
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(invalidData);
+
+            expect(response.status).toBe(400);
+            expect(response.text).toBe('Invalid manager ID format.');
+        });
+
+        it('should return 400 for invalid stakeholder ID format', async () => {
+            const invalidData = {
+                ...bundleData,
+                stakeholders: ['valid', 'invalid-id']
+            };
+
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(invalidData);
+
+            expect(response.status).toBe(400);
+            expect(response.text).toContain('Invalid stakeholder ID format');
         });
 
         it('should return 400 if student is missing', async () => {
@@ -309,6 +412,27 @@ describe('Bundle Routes', () => {
             expect(response.status).toBe(500);
             expect(response.body.message).toBe('Error creating bundle');
         });
+
+        it('should return 400 when creating bundle with duplicate tutor-subject combination', async () => {
+            const tutorId = new Types.ObjectId().toHexString();
+            const bundleData = {
+                student: new Types.ObjectId().toHexString(),
+                subjects: [
+                    { subject: 'Math', grade: 'A', tutor: tutorId, durationMinutes: 600 },
+                    { subject: 'Math', grade: 'B', tutor: tutorId, durationMinutes: 300 }
+                ]
+            };
+            mockBundleService.createBundle.mockRejectedValue(
+                new Error(`Duplicate tutor-subject combination found: tutor ${tutorId} is already assigned to subject Math in this bundle.`)
+            );
+
+            const response = await request(app)
+                .post('/api/bundle')
+                .send(bundleData);
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toContain('Duplicate tutor-subject combination');
+        });
     });
 
     // --- Test Suite for PATCH /api/bundle/:bundleId ---
@@ -327,6 +451,69 @@ describe('Bundle Routes', () => {
             expect(response.status).toBe(200);
             expect(response.body).toEqual(updatedBundle);
             expect(mockBundleService.updateBundle).toHaveBeenCalledWith(bundleId, updateData);
+        });
+
+        it('should update bundle with lessonLocation', async () => {
+            const updateData = { lessonLocation: 'Online' };
+            const updatedBundle = { _id: bundleId, ...updateData };
+            mockBundleService.updateBundle.mockResolvedValue(updatedBundle);
+
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}`)
+                .send(updateData);
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(updatedBundle);
+        });
+
+        it('should update bundle with manager', async () => {
+            const managerId = new Types.ObjectId().toHexString();
+            const updateData = { manager: managerId };
+            const updatedBundle = { _id: bundleId, ...updateData };
+            mockBundleService.updateBundle.mockResolvedValue(updatedBundle);
+
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}`)
+                .send(updateData);
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(updatedBundle);
+        });
+
+        it('should update bundle with stakeholders', async () => {
+            const stakeholderIds = [new Types.ObjectId().toHexString()];
+            const updateData = { stakeholders: stakeholderIds };
+            const updatedBundle = { _id: bundleId, ...updateData };
+            mockBundleService.updateBundle.mockResolvedValue(updatedBundle);
+
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}`)
+                .send(updateData);
+
+            expect(response.status).toBe(200);
+            expect(response.body).toEqual(updatedBundle);
+        });
+
+        it('should return 400 for invalid manager ID format in update', async () => {
+            const updateData = { manager: 'invalid-id' };
+
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}`)
+                .send(updateData);
+
+            expect(response.status).toBe(400);
+            expect(response.text).toBe('Invalid manager ID format.');
+        });
+
+        it('should return 400 for invalid stakeholder ID format in update', async () => {
+            const updateData = { stakeholders: ['invalid-id'] };
+
+            const response = await request(app)
+                .patch(`/api/bundle/${bundleId}`)
+                .send(updateData);
+
+            expect(response.status).toBe(400);
+            expect(response.text).toContain('Invalid stakeholder ID format');
         });
 
         it('should return 400 for invalid bundle ID format', async () => {
@@ -430,6 +617,21 @@ describe('Bundle Routes', () => {
 
             expect(response.status).toBe(500);
             expect(response.body.message).toBe('Error adding subject to bundle');
+        });
+
+        it('should return 400 when adding duplicate tutor-subject combination', async () => {
+            const tutorId = new Types.ObjectId().toHexString();
+            const subjectData = { subject: 'Math', grade: 'A', tutor: tutorId, durationMinutes: 300 };
+            mockBundleService.addSubjectToBundle.mockRejectedValue(
+                new Error(`Duplicate tutor-subject combination: tutor ${tutorId} is already assigned to subject Math in this bundle.`)
+            );
+
+            const response = await request(app)
+                .post(`/api/bundle/${bundleId}/subjects`)
+                .send(subjectData);
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toContain('Duplicate tutor-subject combination');
         });
     });
 

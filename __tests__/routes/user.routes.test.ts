@@ -253,5 +253,17 @@ describe('User Routes', () => {
                 { theme: 'dark' }
             );
         });
+
+        it('should return 500 when service throws error', async () => {
+            mockUserService.updateUserPreferences.mockRejectedValue(new Error('Database error'));
+
+            const response = await request(app)
+                .patch('/api/user/preferences')
+                .send({ theme: 'dark' });
+
+            expect(response.status).toBe(500);
+            expect(response.text).toBe('Internal Server Error');
+            expect(mockLoggingService.error).toHaveBeenCalledWith('Error updating user preferences.', expect.any(Error));
+        });
     });
 });

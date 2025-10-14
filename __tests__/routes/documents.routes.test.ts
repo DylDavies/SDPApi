@@ -52,6 +52,26 @@ describe('Documents Router', () => {
             expect(response.status).toBe(400);
             expect(response.body.message).toBe('Invalid file type.');
         });
+
+        it('should return 400 when filename is missing', async () => {
+            const response = await request(app)
+                .post('/api/documents/upload-url')
+                .send({ contentType: 'application/pdf' });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('Filename and contentType are required.');
+        });
+
+        it('should return 500 when service throws error', async () => {
+            (FileService.getPresignedUploadUrl as jest.Mock).mockRejectedValue(new Error('Service error'));
+
+            const response = await request(app)
+                .post('/api/documents/upload-url')
+                .send({ filename: 'test.pdf', contentType: 'application/pdf' });
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error generating upload URL');
+        });
     });
 
     describe('POST /api/documents/upload-complete', () => {
@@ -64,6 +84,26 @@ describe('Documents Router', () => {
 
             expect(response.status).toBe(201);
             expect(response.body).toHaveProperty('_id', 'doc1');
+        });
+
+        it('should return 400 when required fields are missing', async () => {
+            const response = await request(app)
+                .post('/api/documents/upload-complete')
+                .send({ fileKey: '123' });
+
+            expect(response.status).toBe(400);
+            expect(response.body.message).toBe('fileKey, originalFilename, and contentType are required.');
+        });
+
+        it('should return 500 when service throws error', async () => {
+            (FileService.createDocumentRecord as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+            const response = await request(app)
+                .post('/api/documents/upload-complete')
+                .send({ fileKey: '123', originalFilename: 'test.pdf', contentType: 'application/pdf' });
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error finalizing upload');
         });
     });
 
@@ -94,6 +134,15 @@ describe('Documents Router', () => {
 
             expect(response.status).toBe(200);
             expect(response.body.length).toBe(2);
+        });
+
+        it('should return 500 when service throws error', async () => {
+            (FileService.getDocuments as jest.Mock).mockRejectedValue(new Error('Database error'));
+
+            const response = await request(app).get('/api/documents');
+
+            expect(response.status).toBe(500);
+            expect(response.body.message).toBe('Error fetching documents');
         });
     });
 });

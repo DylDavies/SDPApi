@@ -37,6 +37,9 @@ export interface IBundle {
   createdBy: string | IPopulatedUser; // The ID of the user who created the bundle
   status: EBundleStatus; // The current status of the bundle (e.g., pending, approved)
   isActive: boolean; // Whether the bundle is currently active or not
+  lessonLocation?: string; // The location where lessons take place
+  manager?: string | IPopulatedUser; // The ID of the staff member managing this bundle, or the populated manager object
+  stakeholders?: (string | IPopulatedUser)[]; // An array of user IDs who are stakeholders in this bundle, or populated user objects
   createdAt: Date; // The timestamp when the bundle was created
   updatedAt: Date; // The timestamp when the bundle was last updated
 }
