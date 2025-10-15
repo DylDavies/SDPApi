@@ -29,7 +29,7 @@ router.get('/platform', async (req, res) => {
         // Total users by type and role
         const totalUsers = await MUser.countDocuments();
         const tutors = tutorRoleId
-            ? await MUser.countDocuments({ type: EUserType.Staff, roles: tutorRoleId })
+            ? await MUser.countDocuments({ roles: tutorRoleId })
             : 0;
         const students = await MUser.countDocuments({ type: EUserType.Client });
         const admins = await MUser.countDocuments({ type: EUserType.Admin });
@@ -68,8 +68,8 @@ router.get('/platform', async (req, res) => {
 
         // Tutor status distribution
         const tutorBaseQuery = tutorRoleId
-            ? { type: EUserType.Staff, roles: tutorRoleId }
-            : { type: EUserType.Staff };
+            ? { roles: tutorRoleId }
+            : {};
 
         const activeTutors = await MUser.countDocuments({
             ...tutorBaseQuery,
