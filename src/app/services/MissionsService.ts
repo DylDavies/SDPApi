@@ -14,6 +14,7 @@ export class MissionService implements IService {
     }
 
     public async getMission(): Promise<IMissions[]> {
+        await this.updateExpiredMissions();
         return MMission.find()
             .populate('student', 'displayName')
             .populate('commissionedBy', 'displayName')
@@ -22,6 +23,7 @@ export class MissionService implements IService {
     }
 
     public async getMissionById(id: string): Promise<IMissions | null> {
+        await this.updateExpiredMissions();
         return MMission.findById(id)
             .populate('student', 'displayName')
             .populate('commissionedBy', 'displayName')
@@ -30,6 +32,7 @@ export class MissionService implements IService {
     }
 
     public async getMissionsByStudentId(studentId: string): Promise<IMissions[]> {
+        await this.updateExpiredMissions();
         return MMission.find({ student: studentId })
             .populate('student', 'displayName')
             .populate('tutor', 'displayName')
@@ -39,6 +42,7 @@ export class MissionService implements IService {
     }
 
     public async getMissionsByBundleId(bundleId: string): Promise<IMissions[]> {
+        await this.updateExpiredMissions();
         return MMission.find({ bundleId: bundleId })
             .populate('student', 'displayName')
             .populate('tutor', 'displayName')
@@ -135,6 +139,24 @@ export class MissionService implements IService {
             { $set: { hoursCompleted: hours } },
             { new: true }
         );
+    }
+
+    /**
+     * Updates all missions that have passed their due date and are still active to 'completed' status.
+     * This method is called automatically when retrieving missions.
+     * @private
+     */
+    private async updateExpiredMissions(): Promise<void> {
+        const now = new Date();
+        await MMission.updateMany(
+            {
+                dateCompleted: { $lt: now },
+                status: EMissionStatus.Active
+            },
+            {
+                $set: { status: EMissionStatus.Completed }
+            }
+        ).exec();
     }
 }
 

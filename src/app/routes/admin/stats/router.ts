@@ -11,6 +11,7 @@ import MMission from '../../../db/models/MMissions.model';
 import MBundle from '../../../db/models/MBundle.model';
 import MRole from '../../../db/models/MRole.model';
 import { EUserType } from '../../../models/enums/EUserType.enum';
+import { EMissionStatus } from '../../../models/enums/EMissions.enum';
 
 const router = Router();
 const logger = Singleton.getInstance(LoggingService);
@@ -164,7 +165,7 @@ router.get('/platform', async (req, res) => {
 
             const missionsCompleted = await MMission.countDocuments({
                 tutor: tutor._id,
-                status: 'Completed'
+                status: EMissionStatus.Achieved
             });
 
             return {

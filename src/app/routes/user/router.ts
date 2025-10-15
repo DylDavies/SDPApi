@@ -11,6 +11,7 @@ import MMission from '../../db/models/MMissions.model';
 import MUser from '../../db/models/MUser.model';
 import { Types } from 'mongoose';
 import { ELeave } from '../../models/enums/ELeave.enum';
+import { EMissionStatus } from '../../models/enums/EMissions.enum';
 
 const router = Router();
 const userService = Singleton.getInstance(UserService);
@@ -109,10 +110,10 @@ router.get('/stats/:tutorId', async (req, res) => {
             ? ratedEvents.reduce((sum, e) => sum + (e.rating || 0), 0) / ratedEvents.length
             : 0;
 
-        // Get completed missions count
+        // Get achieved missions count
         const completedMissions = await MMission.countDocuments({
             tutor: tutorObjectId,
-            status: 'Completed'
+            status: EMissionStatus.Achieved
         });
 
         // Get all payslips for net pay calculation
