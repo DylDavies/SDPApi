@@ -94,21 +94,26 @@ router.get('/platform', async (req, res) => {
         });
 
         // PLATFORM ACTIVITY
-        // Total tutoring hours
-        const allEvents = await MEvent.find();
-        const totalMinutes = allEvents.reduce((sum, event) => sum + event.duration, 0);
+        // Total tutoring hours (only from remarked/completed events)
+        const completedEvents = await MEvent.find({ remarked: { $eq: true } });
+        logger.info(`Found ${completedEvents.length} remarked events for total hours calculation`);
+        const totalMinutes = completedEvents.reduce((sum, event) => sum + event.duration, 0);
         const totalTutoringHours = totalMinutes / 60;
+        logger.info(`Total minutes: ${totalMinutes}, Total hours: ${totalTutoringHours}`);
 
-        // Most popular subjects (top 10)
+        // Most popular subjects by hours (top 10, only remarked events)
         const subjectData = await MEvent.aggregate([
+            {
+                $match: { remarked: { $eq: true } }
+            },
             {
                 $group: {
                     _id: '$subject',
-                    count: { $sum: 1 }
+                    totalMinutes: { $sum: '$duration' }
                 }
             },
             {
-                $sort: { count: -1 }
+                $sort: { totalMinutes: -1 }
             },
             {
                 $limit: 10
@@ -117,24 +122,24 @@ router.get('/platform', async (req, res) => {
 
         const mostPopularSubjects = subjectData.map(item => ({
             subject: item._id,
-            count: item.count
+            count: parseFloat((item.totalMinutes / 60).toFixed(2)) // Convert minutes to hours
         }));
 
         // Active bundles
         const activeBundles = await MBundle.countDocuments({
-            isActive: true,
-            hoursLeft: { $gt: 0 }
+            isActive: true
         });
 
-        // Get all tutors for rating calculation
+        // Get all tutors for rating calculation (includes Staff and Admin users with Tutor role)
         const allTutors = tutorRoleId
-            ? await MUser.find({ type: EUserType.Staff, roles: tutorRoleId })
+            ? await MUser.find({ roles: tutorRoleId })
             : await MUser.find({ type: EUserType.Staff });
 
-        // Overall tutor rating (only from actual tutors)
+        // Overall tutor rating (only from remarked events with ratings)
         const tutorIds = allTutors.map(t => t._id);
         const ratedEvents = await MEvent.find({
             tutor: { $in: tutorIds },
+            remarked: { $eq: true },
             rating: { $exists: true, $ne: null, $gt: 0 }
         });
         const overallTutorRating = ratedEvents.length > 0
@@ -146,9 +151,9 @@ router.get('/platform', async (req, res) => {
         const allPayslips = await MPayslip.find();
         const totalPayouts = allPayslips.reduce((sum, p) => sum + (p.netPay || 0), 0);
 
-        // TUTOR LEADERBOARD
+        // TUTOR LEADERBOARD (only from remarked events)
         const leaderboardPromises = allTutors.map(async (tutor) => {
-            const tutorEvents = await MEvent.find({ tutor: tutor._id });
+            const tutorEvents = await MEvent.find({ tutor: tutor._id, remarked: { $eq: true } });
             const totalMinutes = tutorEvents.reduce((sum, e) => sum + e.duration, 0);
             const totalHours = totalMinutes / 60;
 
