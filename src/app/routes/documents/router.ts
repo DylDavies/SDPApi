@@ -22,7 +22,18 @@ router.post("/upload-url", async (req, res) => {
             return res.status(400).json({ message: "Filename and contentType are required." });
         }
 
-        const allowedFileTypes = ['application/pdf', 'image/jpeg', 'image/png', 'audio/mpeg', 'audio/wav'];
+        const allowedFileTypes = [
+            'application/pdf',
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'image/webp',
+            'audio/mpeg',
+            'audio/mp3',
+            'audio/wav',
+            'audio/ogg'
+        ];
         if (!allowedFileTypes.includes(contentType)) {
             return res.status(400).json({ message: "Invalid file type." });
         }
@@ -51,7 +62,8 @@ router.post("/upload-complete", async (req, res) => {
         }
 
         const newDocument = await fileService.createDocumentRecord(fileKey, originalFilename, contentType, user.id);
-        res.status(201).json(newDocument);
+        // Convert to plain object to ensure _id is serialized as string
+        res.status(201).json(newDocument.toObject());
     } catch (error) {
         res.status(500).json({ message: "Error finalizing upload", error: (error as Error).message });
     }

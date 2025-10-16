@@ -153,6 +153,19 @@ export class EventService implements IService {
             }
         }
     }
+
+    /**
+     * Retrieves all events for a given bundle.
+     * @param {string} bundleId - The ID of the bundle.
+     * @returns {Promise<IEvent[]>} A list of events for the bundle.
+     */
+    public async getEventsByBundle(bundleId: string): Promise<IEvent[]> {
+        return MEvent.find({ bundle: bundleId })
+            .populate('student', 'displayName')
+            .populate('tutor', 'displayName')
+            .sort({ startTime: -1 })
+            .exec();
+    }
 }
 
 export default Singleton.getInstance(EventService);

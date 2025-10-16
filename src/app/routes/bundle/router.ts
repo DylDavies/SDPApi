@@ -13,6 +13,17 @@ const bundleService = BundleService;
 // All bundle routes should require a user to be logged in.
 router.use(authenticationMiddleware);
 
+// GET /api/bundle/my-bundles - Get bundles for the current user (as tutor, manager, or stakeholder)
+router.get("/my-bundles", async (req, res) => {
+    try {
+        const user = req.user as IPayloadUser;
+        const bundles = await bundleService.getBundlesByUser(user.id);
+        res.status(200).json(bundles);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching user bundles", error: (error as Error).message });
+    }
+});
+
 // GET /api/bundle - Get all bundles
 router.get("/", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
     try {

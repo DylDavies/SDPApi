@@ -30,6 +30,29 @@ export class BundleService implements IService {
             .populate('stakeholders', 'displayName')
             .exec();
     }
+
+    /**
+     * Retrieves bundles where the user is involved as a tutor, manager, or stakeholder.
+     * @param userId The ID of the user.
+     * @returns A promise that resolves to an array of bundles.
+     */
+    public async getBundlesByUser(userId: string): Promise<IBundle[]> {
+        const userObjectId = new Types.ObjectId(userId);
+
+        return MBundle.find({
+            $or: [
+                { 'subjects.tutor': userObjectId },
+                { 'manager': userObjectId },
+                { 'stakeholders': userObjectId }
+            ]
+        })
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName')
+            .populate('manager', 'displayName')
+            .populate('stakeholders', 'displayName')
+            .exec();
+    }
     /**
  * Finds a single bundle by its ID and populates the student and tutor details.
  * @param id The ID of the bundle to find.
