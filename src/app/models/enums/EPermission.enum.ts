@@ -70,4 +70,7 @@ export enum EPermission {
     
     // Remark management Permission
     REMARKS_MANAGE = 'remarks:manage',
+
+    // Platform Stats Permissions
+    PLATFORM_STATS_VIEW = 'platform_stats:view',
 }
