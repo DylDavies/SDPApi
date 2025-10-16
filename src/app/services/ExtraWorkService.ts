@@ -48,8 +48,13 @@ export class ExtraWorkService implements IService {
 
             if (!work) return null;
 
-            const year = work.dateCompleted!.getFullYear();
-            const month = (work.dateCompleted!.getMonth() + 1).toString().padStart(2, '0');
+            // Check if dateCompleted exists before trying to approve
+            if (!work.dateCompleted) {
+                throw new Error('Cannot approve work that has not been marked as completed');
+            }
+
+            const year = work.dateCompleted.getFullYear();
+            const month = (work.dateCompleted.getMonth() + 1).toString().padStart(2, '0');
             const payPeriod = `${year}-${month}`;
 
             const payslip = await PayslipService.getOrCreateDraftPayslip(work.userId, payPeriod);
