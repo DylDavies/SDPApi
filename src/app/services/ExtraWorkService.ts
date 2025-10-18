@@ -61,7 +61,7 @@ export class ExtraWorkService implements IService {
 
             const studentName = (work.studentId as unknown as {displayName: string}).displayName;
 
-            PayslipService.addBonus(new Types.ObjectId(payslip.id), `EWA - ${work.workType} for ${studentName}`, work.remuneration);
+            await PayslipService.addBonus(new Types.ObjectId(payslip.id), `EWA - ${work.workType} for ${studentName}`, work.remuneration);
         }
 
         return MExtraWork.findByIdAndUpdate(
