@@ -35,8 +35,8 @@ export class RemarkService implements IService {
                         if (document) {
                             remarkObj.entries[i].value = document.toObject();
                         }
-                    } catch (error) {
-                        console.error(`Error populating document for field ${entry.field}:`, error);
+                    } catch {
+                        // Document not found or error loading - silently skip
                     }
                 }
             }

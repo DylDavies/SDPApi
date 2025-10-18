@@ -1,4 +1,4 @@
-import { MatchmakingService, MatchmakingCriteria, MatchedTutor } from '../../src/app/services/MatchmakingService';
+import { MatchmakingService, MatchmakingCriteria } from '../../src/app/services/MatchmakingService';
 import UserService from '../../src/app/services/UserService';
 import GoogleMapsService from '../../src/app/services/GoogleMapsService';
 import { Singleton } from '../../src/app/models/classes/Singleton';
