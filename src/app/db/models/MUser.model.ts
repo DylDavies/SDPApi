@@ -5,6 +5,7 @@ import { ELeave } from '../../models/enums/ELeave.enum';
 import MProficiencies, { IProficiencyDocument } from './MProficiencies.model';
 import { Theme } from '../../models/types/theme.type';
 import { EPermission } from '../../models/enums/EPermission.enum';
+import { IAddress } from '../../models/interfaces/IAddress.interface';
 
 export interface IRateAdjustment {
     reason: string;
@@ -24,6 +25,7 @@ export interface IUser extends Document {
     email: string;
     displayName: string;
     picture?: string;
+    address?: IAddress;
     firstLogin: boolean;
     createdAt: Date;
     type: EUserType;
@@ -49,6 +51,16 @@ const UserBadgeSchema = new Schema<IUserBadge>({
   dateAdded: { type: Date, default: Date.now }
 }, { _id: false });
 
+const AddressSchema = new Schema<IAddress>({
+    streetAddress: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    postalCode: { type: String, trim: true },
+    country: { type: String, trim: true },
+    placeId: { type: String, trim: true },
+    formattedAddress: { type: String, trim: true }
+}, { _id: false });
+
 const LeaveSchema = new Schema<ILeave>({
     reason: { type: String, required: true, trim: true },
     startDate: { type: Date, required: true },
@@ -68,6 +80,7 @@ const UserSchema = new Schema<IUser>({
     email: { type: String, required: true, unique: true, trim: true },
     displayName: { type: String, required: true, trim: true },
     picture: { type: String },
+    address: { type: AddressSchema },
     firstLogin: { type: Boolean, default: true },
     type: { type: String, values: Object.values(EUserType), required: true, default: EUserType.Client },
     roles: [{

@@ -1,7 +1,8 @@
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
-import MBundle, { IBundle, IAddress } from "../db/models/MBundle.model";
+import MBundle, { IBundle } from "../db/models/MBundle.model";
+import { IAddress } from "../models/interfaces/IAddress.interface";
 import { Types } from "mongoose";
 import { EBundleStatus } from "../models/enums/EBundleStatus.enum";
 

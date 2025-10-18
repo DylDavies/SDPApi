@@ -28,6 +28,7 @@ export enum EPermission {
     BUNDLES_EDIT = 'bundles:edit',
     BUNDLES_DELETE = 'bundles:delete',
     BUNDLES_APPROVE = 'bundles:approve',
+    TUTOR_MATCHMAKING_ACCESS = 'tutor_matchmaking:access',
 
     //Leave Management Permissions
     LEAVE_MANAGE = "leave:manage",

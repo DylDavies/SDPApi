@@ -1,16 +1,6 @@
 import { Schema, model, Document, Types } from 'mongoose';
 import { EBundleStatus } from '../../models/enums/EBundleStatus.enum';
-
-// Interface for structured address
-export interface IAddress {
-    streetAddress?: string;
-    city?: string;
-    state?: string;
-    postalCode?: string;
-    country?: string;
-    placeId?: string; // Google Place ID for reference
-    formattedAddress?: string; // Full formatted address from Google
-}
+import { IAddress } from '../../models/interfaces/IAddress.interface';
 
 // Interface for the subjects within a bundle
 interface IBundleSubject {
