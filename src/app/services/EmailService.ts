@@ -1,56 +1,74 @@
-//import nodemailer from 'nodemailer';
+import { SendMailClient } from 'zeptomail';
 import { Singleton } from '../models/classes/Singleton';
-//import { LoggingService } from './LoggingService';
+import { LoggingService } from './LoggingService';
 import { IService } from '../models/interfaces/IService.interface';
 import { EServiceLoadPriority } from '../models/enums/EServiceLoadPriority.enum';
 
 export class EmailService implements IService {
     public static loadPriority = EServiceLoadPriority.Low;
-    //private transporter: nodemailer.Transporter;
-    //private logger = Singleton.getInstance(LoggingService);
+    private client: SendMailClient;
+    private logger = Singleton.getInstance(LoggingService);
 
     constructor() {
-        // We will use environment variables for the email configuration
-        // this.transporter = nodemailer.createTransport({
-        //     host: process.env.EMAIL_HOST,
-        //     port: Number(process.env.EMAIL_PORT),
-        //     secure: process.env.EMAIL_SECURE === 'true',
-        //     auth: {
-        //         user: process.env.EMAIL_USER,
-        //         pass: process.env.EMAIL_PASS,
-        //     },
-        // });
-    }
-
-    async init(): Promise<void> {
-        // try {
-        //     await this.transporter.verify();
-        //     this.logger.info('Email service is ready to send messages');
-        // } catch (error) {
-        //     this.logger.error('Failed to initialize email service:', error);
-        // }
+        const token = process.env.ZEPTOMAIL_TOKEN;
+        if (!token) {
+            this.logger.warn('ZEPTOMAIL_TOKEN is not set. Email service will not be available.');
+        }
+        
+        // Initialize the ZeptoMail client
+        this.client = new SendMailClient({
+            url: "api.zeptomail.com/", // Use the correct API URL for your region if different
+            token: token!,
+        });
     }
 
     /**
-     * Sends an email.
+     * Verifies the connection to the ZeptoMail API.
+     * Note: ZeptoMail's library doesn't have a built-in 'verify' method,
+     * so we will consider it initialized if the token is present.
+     * The first actual send will confirm the connection.
+     */
+    async init(): Promise<void> {
+        if (process.env.ZEPTOMAIL_TOKEN) {
+            this.logger.info('Zoho ZeptoMail service is configured.');
+        } else {
+            this.logger.error('Failed to initialize Zoho ZeptoMail service: ZEPTOMAIL_TOKEN is missing.');
+        }
+        return Promise.resolve();
+    }
+
+/**
+     * Sends an email using the Zoho ZeptoMail API.
      * @param to Recipient's email address.
      * @param subject The subject of the email.
      * @param html The HTML body of the email.
      */
-    async sendEmail(_to: string, _subject: string, _html: string): Promise<void> {
-        // const mailOptions = {
-        //     from: `"TutorCore" <${process.env.EMAIL_FROM}>`,
-        //     to,
-        //     subject,
-        //     html,
-        // };
+    async sendEmail(to: string, subject: string, html: string): Promise<void> {
+        if (!this.client) {
+            this.logger.error('Email client is not initialized. Cannot send email.');
+            return;
+        }
 
-        // try {
-        //     const info = await this.transporter.sendMail(mailOptions);
-        //     this.logger.info(`Email sent: ${info.messageId}`);
-        // } catch (error) {
-        //     this.logger.error('Error sending email:', error);
-        // }
+        try {
+            await this.client.sendMail({
+                from: {
+                    address: process.env.EMAIL_FROM!,
+                    name: "TutorCore",
+                },
+                to: [
+                    {
+                        email_address: {
+                            address: to,
+                        },
+                    },
+                ],
+                subject: subject,
+                htmlbody: html,
+            });
+            this.logger.info(`Email sent to ${to} via Zoho ZeptoMail.`);
+        } catch (error) {
+            this.logger.error('Error sending email via Zoho ZeptoMail:', error);
+        }
     }
 }
 

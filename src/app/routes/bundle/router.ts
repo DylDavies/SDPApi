@@ -25,7 +25,7 @@ router.get("/my-bundles", async (req, res) => {
 });
 
 // GET /api/bundle - Get all bundles
-router.get("/", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
+router.get("/", hasPermission([EPermission.BUNDLES_VIEW, EPermission.STUDENTS_VIEW], false), async (req, res) => {
     try {
         const bundles = await bundleService.getBundles();
         res.status(200).json(bundles);
@@ -34,7 +34,7 @@ router.get("/", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
     }
 });
 // GET /api/bundle/:bundleId - Get a single bundle by its ID
-router.get("/:bundleId", hasPermission(EPermission.BUNDLES_VIEW), async (req, res) => {
+router.get("/:bundleId", hasPermission([EPermission.BUNDLES_VIEW, EPermission.STUDENTS_VIEW], false), async (req, res) => {
     try {
         const { bundleId } = req.params;
 

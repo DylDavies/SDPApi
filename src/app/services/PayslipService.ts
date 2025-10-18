@@ -29,6 +29,11 @@ export class PayslipService implements IService {
     public async init(): Promise<void> { }
     public async initialize(): Promise<void> { }
 
+    public async getIDs(): Promise<string[]> {
+        const userIds = await MPayslip.distinct("_id");
+        return userIds.map(id => id.toHexString());
+    }
+
     /**
      * Adds a completed event from an external system to the correct draft payslip.
      * @param payload The event data.

@@ -11,6 +11,9 @@ import MExtraWork from '../db/models/MExtraWork.model';
 import MSidebar from '../db/models/MSidebar.model';
 import MBadge from '../db/models/MBadge.model';
 import MEvent from '../db/models/MEvent.model';
+import MBundle from '../db/models/MBundle.model';
+import { MPayslip } from '../db/models/MPayslip.model';
+import MMission from '../db/models/MMissions.model';
 
 /**
  * Listens to MongoDB change streams and broadcasts events via the SocketService.
@@ -37,6 +40,9 @@ export class ChangeStreamService implements IService {
                     this.logger.info(`Change detected in 'users' collection: ${change.operationType}`);
                     this.socketService.broadcastToTopic(ESocketMessage.UsersUpdated, { change });
                 }
+
+                // Trigger platform stats update (affects user counts, tutor status, etc.)
+                this.socketService.broadcastToTopic(ESocketMessage.PlatformStatsUpdated, { change });
             });
 
             MRole.watch().on('change', (change) => {
@@ -82,6 +88,30 @@ export class ChangeStreamService implements IService {
                         this.socketService.emitToUser(tutorId, ESocketMessage.EventsUpdated, { change });
                     }
                 }
+
+                // Trigger platform stats update
+                this.socketService.broadcastToTopic(ESocketMessage.PlatformStatsUpdated, { change });
+            });
+
+            MBundle.watch().on('change', (change) => {
+                this.logger.info(`Change detected in 'bundles' collection: ${change.operationType}`);
+
+                // Trigger platform stats update (affects active bundles count)
+                this.socketService.broadcastToTopic(ESocketMessage.PlatformStatsUpdated, { change });
+            });
+
+            MPayslip.watch().on('change', (change) => {
+                this.logger.info(`Change detected in 'payslips' collection: ${change.operationType}`);
+
+                // Trigger platform stats update (affects total payouts)
+                this.socketService.broadcastToTopic(ESocketMessage.PlatformStatsUpdated, { change });
+            });
+
+            MMission.watch().on('change', (change) => {
+                this.logger.info(`Change detected in 'missions' collection: ${change.operationType}`);
+
+                // Trigger platform stats update (affects tutor leaderboard)
+                this.socketService.broadcastToTopic(ESocketMessage.PlatformStatsUpdated, { change });
             });
 
             this.logger.info('Now watching database collections for changes...');

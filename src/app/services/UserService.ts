@@ -37,6 +37,11 @@ export class UserService implements IService {
         return Promise.resolve();
     }
 
+    public async getIDs(): Promise<string[]> {
+        const userIds = await MUser.distinct("_id");
+        return userIds.map(id => id.toHexString());
+    }
+
     /**
      * Finds a user by their Google ID, updating their profile if they exist,
      * or creating a new user if they don't.
@@ -45,7 +50,6 @@ export class UserService implements IService {
      */
     public async addOrUpdateUser(userData: { googleId: string, email: string, displayName: string, picture?: string, address?: IAddress }): Promise<IUser> {
         const { googleId, email, picture, displayName, address } = userData;
-        const updateFields: any = { email, picture, displayName };
 
         // Only update address if it was provided
         if (address) {
@@ -55,8 +59,8 @@ export class UserService implements IService {
         const user = await MUser.findOneAndUpdate(
             { googleId: googleId },
             {
-                $set: updateFields,
-                $setOnInsert: { googleId, firstLogin: true }
+                $set: { email, picture },
+                $setOnInsert: { googleId, displayName, firstLogin: true }
             },
             { upsert: true, new: true, runValidators: true }
         );

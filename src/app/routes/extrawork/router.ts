@@ -111,7 +111,14 @@ router.patch("/:workId/status", hasPermission(EPermission.EXTRA_WORK_APPROVE), a
         }
         res.status(200).json(updatedWork);
     } catch (error) {
-        res.status(500).json({ message: "Error updating extra work status", error: (error as Error).message });
+        const errorMessage = (error as Error).message;
+
+        // Check for specific business logic errors and return appropriate status codes
+        if (errorMessage.includes('not been marked as completed')) {
+            return res.status(400).json({ message: errorMessage });
+        }
+
+        res.status(500).json({ message: "Error updating extra work status", error: errorMessage });
     }
 });
 

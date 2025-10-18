@@ -44,6 +44,8 @@ jobs:
           echo "DO_SPACES_ENDPOINT=${{ secrets.DO_SPACES_ENDPOINT }}" >> .env
           echo "DO_SPACES_BUCKET_NAME=${{ secrets.DO_SPACES_BUCKET_NAME }}" >> .env
           echo "DO_SPACES_REGION=${{ secrets.DO_SPACES_REGION }}" >> .env
+          echo "ZEPTOMAIL_TOKEN=${{ secrets.ZEPTOMAIL_TOKEN }}" >> .env
+          echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" >> .env
 
       - name: Copy project files to server
         uses: appleboy/scp-action@master

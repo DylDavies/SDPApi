@@ -32,8 +32,8 @@
     "mongoose": "^8.17.2",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.6",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "zeptomail": "^6.2.1"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.9",

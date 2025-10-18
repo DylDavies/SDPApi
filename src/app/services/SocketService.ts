@@ -20,7 +20,8 @@ export class SocketService {
     private topicPermissions: { [topic in ESocketMessage]?: EPermission } = {
         [ESocketMessage.UsersUpdated]: EPermission.USERS_VIEW,
         [ESocketMessage.BadgesUpdated]: EPermission.BADGES_VIEW,
-        [ESocketMessage.ExtraWorkUpdated]: EPermission.EXTRA_WORK_VIEW
+        [ESocketMessage.ExtraWorkUpdated]: EPermission.EXTRA_WORK_VIEW,
+        [ESocketMessage.PlatformStatsUpdated]: EPermission.PLATFORM_STATS_VIEW
     };
 
     /**
