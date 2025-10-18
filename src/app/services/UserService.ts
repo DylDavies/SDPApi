@@ -51,6 +51,9 @@ export class UserService implements IService {
     public async addOrUpdateUser(userData: { googleId: string, email: string, displayName: string, picture?: string, address?: IAddress }): Promise<IUser> {
         const { googleId, email, picture, displayName, address } = userData;
 
+        // Build update fields object
+        const updateFields: { email: string, picture?: string, address?: IAddress } = { email, picture };
+
         // Only update address if it was provided
         if (address) {
             updateFields.address = address;
@@ -59,7 +62,7 @@ export class UserService implements IService {
         const user = await MUser.findOneAndUpdate(
             { googleId: googleId },
             {
-                $set: { email, picture },
+                $set: updateFields,
                 $setOnInsert: { googleId, displayName, firstLogin: true }
             },
             { upsert: true, new: true, runValidators: true }
