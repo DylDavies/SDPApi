@@ -38,6 +38,7 @@ export interface IUser extends Document {
     paymentType: 'Contract' | 'Salaried';
     monthlyMinimum: number;
     rateAdjustments: IRateAdjustment[];
+    welcomeCardDismissed?: boolean;
 }
 
 export interface IUserWithPermissions extends IUser {
@@ -99,6 +100,10 @@ const UserSchema = new Schema<IUser>({
     paymentType: { type: String, enum: ['Contract', 'Salaried'], default: 'Contract' },
     monthlyMinimum: { type: Number, default: 0 },
     rateAdjustments: [RateAdjustmentSchema],
+    welcomeCardDismissed: {
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);
