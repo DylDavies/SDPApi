@@ -38,8 +38,8 @@ describe('UserService', () => {
             expect(MUser.findOneAndUpdate).toHaveBeenCalledWith(
                 { googleId: userData.googleId },
                 {
-                    $set: { email: userData.email, picture: userData.picture, displayName: userData.displayName },
-                    $setOnInsert: { googleId: userData.googleId, firstLogin: true }
+                    $set: { email: userData.email, picture: userData.picture },
+                    $setOnInsert: { googleId: userData.googleId, displayName: userData.displayName, firstLogin: true }
                 },
                 { upsert: true, new: true, runValidators: true }
             );

@@ -52,8 +52,8 @@ export class UserService implements IService {
         const user = await MUser.findOneAndUpdate(
             { googleId: googleId },
             {
-                $set: { email, picture, displayName },
-                $setOnInsert: { googleId, firstLogin: true }
+                $set: { email, picture },
+                $setOnInsert: { googleId, displayName, firstLogin: true }
             },
             { upsert: true, new: true, runValidators: true }
         );
