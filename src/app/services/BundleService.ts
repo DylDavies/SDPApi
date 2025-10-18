@@ -16,6 +16,11 @@ export class BundleService implements IService {
         return Promise.resolve();
     }
 
+    public async getIDs(): Promise<string[]> {
+        const bundleIds = await MBundle.distinct("_id");
+        return bundleIds.map(id => id.toHexString());
+    }
+
     /**
      * Retrieves all bundles from the database.
      * @returns A promise that resolves to an array of all bundles.
