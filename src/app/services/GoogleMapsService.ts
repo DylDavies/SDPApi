@@ -6,7 +6,7 @@ import { IService } from '../models/interfaces/IService.interface';
 import { EServiceLoadPriority } from '../models/enums/EServiceLoadPriority.enum';
 import { Singleton } from '../models/classes/Singleton';
 import { LoggingService } from './LoggingService';
-import { IAddress } from '../db/models/MBundle.model';
+import { IAddress } from '../models/interfaces/IAddress.interface';
 
 interface GeocodeAddressComponent {
     long_name: string;
@@ -136,6 +136,23 @@ export class GoogleMapsService implements IService {
     }
 
     /**
+     * Constructs an address string from address components
+     * @param address - The address object
+     * @returns Formatted address string
+     */
+    private constructAddressString(address: IAddress): string {
+        const parts = [
+            address.streetAddress,
+            address.city,
+            address.state,
+            address.postalCode,
+            address.country
+        ].filter(part => part && part.trim().length > 0);
+
+        return parts.join(', ');
+    }
+
+    /**
      * Parses the geocoding result into a structured address
      * @param result - The geocode result from Google Maps API
      * @returns Structured address object
@@ -193,6 +210,58 @@ export class GoogleMapsService implements IService {
         } catch (error) {
             this.logger.error('Error validating address from string:', error);
             throw error;
+        }
+    }
+
+    /**
+     * Calculates the distance between two addresses using Google Distance Matrix API
+     * @param origin - The origin address
+     * @param destination - The destination address
+     * @returns Distance in kilometers, or null if calculation fails
+     */
+    public async calculateDistance(origin: IAddress, destination: IAddress): Promise<number | null> {
+        if (!this.apiKey || this.apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+            this.logger.warn('Google Maps API key is not configured - distance calculation unavailable');
+            return null;
+        }
+
+        try {
+            // Use formatted addresses or construct from components
+            const originString = origin.formattedAddress ||
+                this.constructAddressString(origin);
+            const destString = destination.formattedAddress ||
+                this.constructAddressString(destination);
+
+            if (!originString || originString.trim() === ',,' || !destString || destString.trim() === ',,') {
+                this.logger.warn('Insufficient address information for distance calculation', {
+                    origin: originString,
+                    destination: destString
+                });
+                return null;
+            }
+
+            const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(originString)}&destinations=${encodeURIComponent(destString)}&units=metric&key=${this.apiKey}`;
+            const response = await fetch(url);
+            const data: any = await response.json();
+
+            if (data.status !== 'OK' || !data.rows || data.rows.length === 0) {
+                this.logger.warn(`Distance Matrix API error: ${data.status}. Origin: "${originString}", Dest: "${destString}"`);
+                return null;
+            }
+
+            const element = data.rows[0].elements[0];
+            if (element.status !== 'OK') {
+                this.logger.warn(`Distance calculation element status: ${element.status}. Origin: "${originString}", Dest: "${destString}"`);
+                return null;
+            }
+
+            // Return distance in kilometers
+            const distanceKm = element.distance.value / 1000; // Convert meters to kilometers
+            this.logger.debug(`Distance calculated: ${distanceKm.toFixed(2)} km from "${originString}" to "${destString}"`);
+            return distanceKm;
+        } catch (error) {
+            this.logger.error('Error calculating distance:', error);
+            return null;
         }
     }
 }

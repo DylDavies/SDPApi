@@ -91,5 +91,19 @@ router.patch("/:eventId/rate", async (req, res) => {
     }
 });
 
+/**
+ * @route GET /api/events/bundle/:bundleId
+ * @desc Get all events for a specific bundle
+ * @access Private
+ */
+router.get("/bundle/:bundleId", async (req, res) => {
+    try {
+        const { bundleId } = req.params;
+        const events = await eventService.getEventsByBundle(bundleId);
+        res.status(200).json(events);
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching events for bundle", error: (error as Error).message });
+    }
+});
 
 export default router;

@@ -76,7 +76,10 @@ describe('Documents Router', () => {
 
     describe('POST /api/documents/upload-complete', () => {
         it('should create a document record and return 201', async () => {
-            (FileService.createDocumentRecord as jest.Mock).mockResolvedValue({ _id: 'doc1' });
+            (FileService.createDocumentRecord as jest.Mock).mockResolvedValue({
+                _id: 'doc1',
+                toObject: () => ({ _id: 'doc1' })
+            });
 
             const response = await request(app)
                 .post('/api/documents/upload-complete')

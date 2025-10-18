@@ -4,12 +4,46 @@ import { Singleton } from "../models/classes/Singleton";
 import MRemark, { IRemark } from "../db/models/MRemark.model";
 import MRemarkTemplate, { IRemarkTemplate, IRemarkField } from "../db/models/MRemarkTemplate.model";
 import MEvent from "../db/models/MEvent.model";
+import MDocument from "../db/models/MDocument.model";
 import PayslipService from "./PayslipService";
 import UserService from "./UserService";
 import IBadge from "../models/interfaces/IBadge.interface";
+import { Types } from "mongoose";
 
 export class RemarkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
+
+    private async populateDocumentsInEntries(remark: any): Promise<IRemark> {
+        if (!remark || !remark.entries) return remark;
+
+        // Convert to plain object if it's a Mongoose document
+        const remarkObj = typeof remark.toObject === 'function' ? remark.toObject() : remark;
+
+        const template = await MRemarkTemplate.findById(remarkObj.template);
+        if (!template) return remarkObj;
+
+        for (let i = 0; i < remarkObj.entries.length; i++) {
+            const entry = remarkObj.entries[i];
+            const fieldDef = template.fields.find(f => f.name === entry.field);
+
+            if (fieldDef && ['pdf', 'image', 'audio'].includes(fieldDef.type)) {
+                // Handle both string and ObjectId formats
+                const documentId = entry.value;
+                if (documentId && Types.ObjectId.isValid(documentId)) {
+                    try {
+                        const document = await MDocument.findById(documentId);
+                        if (document) {
+                            remarkObj.entries[i].value = document.toObject();
+                        }
+                    } catch {
+                        // Document not found or error loading - silently skip
+                    }
+                }
+            }
+        }
+
+        return remarkObj;
+    }
 
     public async init(): Promise<void> {
         const count = await MRemarkTemplate.countDocuments();
@@ -49,7 +83,7 @@ export class RemarkService implements IService {
         return newTemplate;
     }
 
-    public async createRemark(eventId: string, entries: { field: string; value: string | number | boolean | Date | null }[]): Promise<IRemark> {
+    public async createRemark(eventId: string, entries: { field: string; value: any }[]): Promise<IRemark> {
         const activeTemplate = await this.getActiveTemplate();
         if (!activeTemplate) {
             throw new Error("No active remark template found.");
@@ -60,10 +94,10 @@ export class RemarkService implements IService {
             throw new Error("This event has already been remarked.");
         }
 
-        const newRemark = await MRemark.create({ 
-            event: eventId, 
-            entries, 
-            template: activeTemplate._id 
+        const newRemark = await MRemark.create({
+            event: eventId,
+            entries,
+            template: activeTemplate._id
         });
 
         await MEvent.findByIdAndUpdate(eventId, { remarked: true, remark: newRemark._id });
@@ -93,12 +127,51 @@ export class RemarkService implements IService {
         return newRemark;
     }
 
-    public async updateRemark(remarkId: string, entries: { field: string; value: string | number | boolean | Date | null }[]): Promise<IRemark | null> {
-        return MRemark.findByIdAndUpdate(remarkId, { entries }, { new: true }).populate('template');
+    public async updateRemark(remarkId: string, entries: { field: string; value: any }[]): Promise<IRemark | null> {
+        const remark = await MRemark.findByIdAndUpdate(remarkId, { entries }, { new: true })
+            .populate('template');
+
+        if (!remark) return null;
+
+        return this.populateDocumentsInEntries(remark);
     }
 
     public async getRemarkForEvent(eventId: string): Promise<IRemark | null> {
-        return MRemark.findOne({ event: eventId }).populate('template');
+        const remark = await MRemark.findOne({ event: eventId })
+            .populate('template');
+
+        if (!remark) return null;
+
+        return this.populateDocumentsInEntries(remark);
+    }
+
+    /**
+     * Gets all remarks for a specific student across all their events.
+     * @param {string} studentId - The ID of the student.
+     * @returns {Promise<IRemark[]>} An array of remarks with populated event details.
+     */
+    public async getRemarksForStudent(studentId: string): Promise<IRemark[]> {
+        const events = await MEvent.find({ student: studentId }).select('_id');
+        const eventIds = events.map(e => e._id);
+
+        const remarks = await MRemark.find({ event: { $in: eventIds } })
+            .populate('template')
+            .populate({
+                path: 'event',
+                populate: [
+                    { path: 'tutor', select: 'displayName' },
+                    { path: 'student', select: 'displayName' }
+                ]
+            })
+            .sort({ remarkedAt: -1 })
+            .exec();
+
+        // Populate documents in entries for each remark
+        const populatedRemarks = await Promise.all(
+            remarks.map(remark => this.populateDocumentsInEntries(remark))
+        );
+
+        return populatedRemarks;
     }
 }
 

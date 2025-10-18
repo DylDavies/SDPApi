@@ -15,6 +15,7 @@ import { IRole } from "../db/models/MRole.model";
 import { EPermission } from "../models/enums/EPermission.enum";
 import IBadge from "../models/interfaces/IBadge.interface";
 import notificationService from "./NotificationService";
+import { IAddress } from "../models/interfaces/IAddress.interface";
 
 const formatDate = (date: Date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -47,12 +48,21 @@ export class UserService implements IService {
      * @param userData The user data received from Google.
      * @returns The created or updated user document.
      */
-    public async addOrUpdateUser(userData: { googleId: string, email: string, displayName: string, picture?: string }): Promise<IUser> {
-        const { googleId, email, picture, displayName } = userData;
+    public async addOrUpdateUser(userData: { googleId: string, email: string, displayName: string, picture?: string, address?: IAddress }): Promise<IUser> {
+        const { googleId, email, picture, displayName, address } = userData;
+
+        // Build update fields object
+        const updateFields: { email: string, picture?: string, address?: IAddress } = { email, picture };
+
+        // Only update address if it was provided
+        if (address) {
+            updateFields.address = address;
+        }
+
         const user = await MUser.findOneAndUpdate(
             { googleId: googleId },
             {
-                $set: { email, picture },
+                $set: updateFields,
                 $setOnInsert: { googleId, displayName, firstLogin: true }
             },
             { upsert: true, new: true, runValidators: true }
@@ -286,7 +296,7 @@ export class UserService implements IService {
      * @param updateData An object containing the fields to update.
      * @returns The updated user document or null if not found.
      */
-    public async editUser(id: string, updateData: Partial<Pick<IUser, 'displayName' | 'picture'>>): Promise<IUser | null> {
+    public async editUser(id: string, updateData: Partial<Pick<IUser, 'displayName' | 'picture' | 'address'>>): Promise<IUser | null> {
         if (!Types.ObjectId.isValid(id)) {
             this.logger.warn(`Invalid ID string provided to editUser: "${id}"`);
             return null;

@@ -1,7 +1,8 @@
 import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum";
 import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
-import MBundle, { IBundle, IAddress } from "../db/models/MBundle.model";
+import MBundle, { IBundle } from "../db/models/MBundle.model";
+import { IAddress } from "../models/interfaces/IAddress.interface";
 import { Types } from "mongoose";
 import { EBundleStatus } from "../models/enums/EBundleStatus.enum";
 
@@ -28,6 +29,29 @@ export class BundleService implements IService {
     public async getBundles(): Promise<IBundle[]> {
 
         return MBundle.find()
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName')
+            .populate('manager', 'displayName')
+            .populate('stakeholders', 'displayName')
+            .exec();
+    }
+
+    /**
+     * Retrieves bundles where the user is involved as a tutor, manager, or stakeholder.
+     * @param userId The ID of the user.
+     * @returns A promise that resolves to an array of bundles.
+     */
+    public async getBundlesByUser(userId: string): Promise<IBundle[]> {
+        const userObjectId = new Types.ObjectId(userId);
+
+        return MBundle.find({
+            $or: [
+                { 'subjects.tutor': userObjectId },
+                { 'manager': userObjectId },
+                { 'stakeholders': userObjectId }
+            ]
+        })
             .populate('student', 'displayName')
             .populate('subjects.tutor', 'displayName')
             .populate('createdBy', 'displayName')
