@@ -133,10 +133,35 @@ describe('Auth Routes - /callback', () => {
             getPayload: () => ({ sub: 'google-user-123', email: 'test@example.com', name: 'Test User' }),
         } as any);
         mockUserService.addOrUpdateUser.mockRejectedValue(new Error('DB connection failed'))
-        
+
         await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
-        
+
         expect(mockResponse.status).toHaveBeenCalledWith(500);
         expect(mockResponse.send).toHaveBeenCalledWith('An internal error occurred.');
+    });
+
+    it('should return 400 if Google ID token payload is invalid (missing sub)', async () => {
+        mockGoogleInstance.getTokens.mockResolvedValue({ tokens: { id_token: 'fake-google-token' } });
+        mockGoogleInstance.verifyIdToken.mockResolvedValue({
+            getPayload: () => ({ email: 'test@example.com', name: 'Test User' }), // Missing 'sub'
+        } as any);
+
+        await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
+
+        expect(mockResponse.status).toHaveBeenCalledWith(400);
+        expect(mockResponse.send).toHaveBeenCalledWith('Invalid Google ID token.');
+    });
+
+    it('should return 500 if user creation returns null', async () => {
+        mockGoogleInstance.getTokens.mockResolvedValue({ tokens: { id_token: 'fake-google-token' } });
+        mockGoogleInstance.verifyIdToken.mockResolvedValue({
+            getPayload: () => ({ sub: 'google-user-123', email: 'test@example.com', name: 'Test User' }),
+        } as any);
+        mockUserService.addOrUpdateUser.mockResolvedValue(null); // User creation failed
+
+        await callbackHandler(mockRequest as Request, mockResponse as Response, nextFunction);
+
+        expect(mockResponse.status).toHaveBeenCalledWith(500);
+        expect(mockResponse.send).toHaveBeenCalledWith('Could not process user login.');
     });
 });

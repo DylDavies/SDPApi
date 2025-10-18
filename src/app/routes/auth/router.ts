@@ -28,6 +28,7 @@ router.get("/callback", async (req, res) => {
 
         const { tokens } = await googleService.getTokens(code);
         const googleIdToken = tokens.id_token;
+        const accessToken = tokens.access_token;
         if (!googleIdToken) {
             logger.error("Google ID Token not found in token response.");
             return res.status(400).send("Google ID Token not found.");
@@ -40,11 +41,18 @@ router.get("/callback", async (req, res) => {
             return res.status(400).send('Invalid Google ID token.');
         }
 
+        // Fetch address from Google if access token is available
+        let address = null;
+        if (accessToken) {
+            address = await googleService.getUserAddresses(accessToken);
+        }
+
         const userFromDb = await userService.addOrUpdateUser({
             googleId: payload.sub,
             email: payload.email,
             displayName: payload.name,
-            picture: payload.picture
+            picture: payload.picture,
+            address: address || undefined
         });
 
         if (!userFromDb) {

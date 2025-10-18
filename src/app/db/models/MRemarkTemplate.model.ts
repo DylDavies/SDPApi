@@ -1,6 +1,6 @@
 import { Schema, model, Document } from 'mongoose';
 
-export type RemarkFieldType = 'string' | 'boolean' | 'number' | 'time';
+export type RemarkFieldType = 'string' | 'boolean' | 'number' | 'time' | 'pdf' | 'image' | 'audio';
 
 export interface IRemarkField {
     name: string;
@@ -17,7 +17,7 @@ const RemarkFieldSchema = new Schema<IRemarkField>({
     name: { type: String, required: true },
     type: {
         type: String,
-        enum: ['string', 'boolean', 'number', 'time'],
+        enum: ['string', 'boolean', 'number', 'time', 'pdf', 'image', 'audio'],
         required: true
     }
 }, { _id: false });

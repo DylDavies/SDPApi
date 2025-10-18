@@ -1,4 +1,4 @@
-export type RemarkFieldType = 'string' | 'boolean' | 'number' | 'time';
+export type RemarkFieldType = 'string' | 'boolean' | 'number' | 'time' | 'pdf' | 'image' | 'audio';
 
 export interface IRemarkField {
     name: string;
@@ -12,7 +12,7 @@ export interface IRemark {
     remarkedAt: Date;
     entries: {
         field: string;
-        value: any;
+        value: string | number | boolean | Date | string | null;
     }[];
 }
 

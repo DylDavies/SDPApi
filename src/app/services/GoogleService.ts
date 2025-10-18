@@ -30,7 +30,8 @@ export class GoogleService implements IService {
             access_type: "offline",
             scope: [
                 "https://www.googleapis.com/auth/userinfo.profile",
-                "https://www.googleapis.com/auth/userinfo.email"
+                "https://www.googleapis.com/auth/userinfo.email",
+                "https://www.googleapis.com/auth/user.addresses.read"
             ],
             prompt: "select_account"
         });
@@ -45,6 +46,44 @@ export class GoogleService implements IService {
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
         });
+    }
+
+    public async getUserAddresses(accessToken: string) {
+        try {
+            const response = await fetch(
+                'https://people.googleapis.com/v1/people/me?personFields=addresses',
+                {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    }
+                }
+            );
+
+            if (!response.ok) {
+                this.logger.warn(`Failed to fetch user addresses: ${response.statusText}`);
+                return null;
+            }
+
+            const data = await response.json();
+
+            // Google returns addresses as an array, we'll take the first one
+            if (data.addresses && data.addresses.length > 0) {
+                const address = data.addresses[0];
+                return {
+                    streetAddress: address.streetAddress || undefined,
+                    city: address.city || undefined,
+                    state: address.region || undefined,
+                    postalCode: address.postalCode || undefined,
+                    country: address.country || undefined,
+                    formattedAddress: address.formattedValue || undefined
+                };
+            }
+
+            return null;
+        } catch (error) {
+            this.logger.error('Error fetching user addresses from Google:', error);
+            return null;
+        }
     }
 }
 

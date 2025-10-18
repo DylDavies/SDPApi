@@ -5,6 +5,7 @@ import { ELeave } from '../../models/enums/ELeave.enum';
 import MProficiencies, { IProficiencyDocument } from './MProficiencies.model';
 import { Theme } from '../../models/types/theme.type';
 import { EPermission } from '../../models/enums/EPermission.enum';
+import { IAddress } from '../../models/interfaces/IAddress.interface';
 
 export interface IRateAdjustment {
     reason: string;
@@ -24,6 +25,7 @@ export interface IUser extends Document {
     email: string;
     displayName: string;
     picture?: string;
+    address?: IAddress;
     firstLogin: boolean;
     createdAt: Date;
     type: EUserType;
@@ -38,6 +40,7 @@ export interface IUser extends Document {
     paymentType: 'Contract' | 'Salaried';
     monthlyMinimum: number;
     rateAdjustments: IRateAdjustment[];
+    welcomeCardDismissed?: boolean;
 }
 
 export interface IUserWithPermissions extends IUser {
@@ -47,6 +50,16 @@ export interface IUserWithPermissions extends IUser {
 const UserBadgeSchema = new Schema<IUserBadge>({
   badge: { type: Schema.Types.ObjectId, ref: 'Badges', required: true },
   dateAdded: { type: Date, default: Date.now }
+}, { _id: false });
+
+const AddressSchema = new Schema<IAddress>({
+    streetAddress: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    postalCode: { type: String, trim: true },
+    country: { type: String, trim: true },
+    placeId: { type: String, trim: true },
+    formattedAddress: { type: String, trim: true }
 }, { _id: false });
 
 const LeaveSchema = new Schema<ILeave>({
@@ -68,6 +81,7 @@ const UserSchema = new Schema<IUser>({
     email: { type: String, required: true, unique: true, trim: true },
     displayName: { type: String, required: true, trim: true },
     picture: { type: String },
+    address: { type: AddressSchema },
     firstLogin: { type: Boolean, default: true },
     type: { type: String, values: Object.values(EUserType), required: true, default: EUserType.Client },
     roles: [{
@@ -99,6 +113,10 @@ const UserSchema = new Schema<IUser>({
     paymentType: { type: String, enum: ['Contract', 'Salaried'], default: 'Contract' },
     monthlyMinimum: { type: Number, default: 0 },
     rateAdjustments: [RateAdjustmentSchema],
+    welcomeCardDismissed: {
+        type: Boolean,
+        default: false
+    }
 }, { timestamps: true });
 
 const MUser = model<IUser>('User', UserSchema);

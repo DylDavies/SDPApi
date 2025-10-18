@@ -28,6 +28,10 @@ export enum EPermission {
     BUNDLES_EDIT = 'bundles:edit',
     BUNDLES_DELETE = 'bundles:delete',
     BUNDLES_APPROVE = 'bundles:approve',
+    TUTOR_MATCHMAKING_ACCESS = 'tutor_matchmaking:access',
+
+    // Student Management Permissions
+    STUDENTS_VIEW = 'students:view',
 
     //Leave Management Permissions
     LEAVE_MANAGE = "leave:manage",
@@ -70,4 +74,7 @@ export enum EPermission {
     
     // Remark management Permission
     REMARKS_MANAGE = 'remarks:manage',
+
+    // Platform Stats Permissions
+    PLATFORM_STATS_VIEW = 'platform_stats:view',
 }

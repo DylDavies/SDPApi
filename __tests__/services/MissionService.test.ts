@@ -23,17 +23,35 @@ describe('MissionService', () => {
   });
 
   describe('getMission', () => {
-    it('should retrieve all missions with populated user data', async () => {
+    it('should retrieve all missions with populated user data and update expired missions', async () => {
       const mockMissions = [
         { _id: new Types.ObjectId(), documentName: 'Mission 1' },
         { _id: new Types.ObjectId(), documentName: 'Mission 2' }
       ];
+
+      // Mock updateMany for updateExpiredMissions
+      const mockUpdateQuery = {
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 0 })
+      };
+      (MMission.updateMany as jest.Mock).mockReturnValue(mockUpdateQuery);
 
       // Mock the method chain
       const mockQuery = createMockQuery(mockMissions);
       (MMission.find as jest.Mock).mockReturnValue(mockQuery);
 
       const result = await missionService.getMission();
+
+      // Check that updateExpiredMissions was called
+      expect(MMission.updateMany).toHaveBeenCalledWith(
+        {
+          dateCompleted: { $lt: expect.any(Date) },
+          status: EMissionStatus.Active
+        },
+        {
+          $set: { status: EMissionStatus.Completed }
+        }
+      );
+      expect(mockUpdateQuery.exec).toHaveBeenCalled();
 
       expect(MMission.find).toHaveBeenCalled();
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
@@ -45,14 +63,24 @@ describe('MissionService', () => {
   });
 
   describe('getMissionById', () => {
-    it('should retrieve a mission by ID with populated user data', async () => {
+    it('should retrieve a mission by ID with populated user data and update expired missions', async () => {
       const missionId = new Types.ObjectId().toHexString();
       const mockMission = { _id: missionId, documentName: 'Test Mission' };
+
+      // Mock updateMany for updateExpiredMissions
+      const mockUpdateQuery = {
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 0 })
+      };
+      (MMission.updateMany as jest.Mock).mockReturnValue(mockUpdateQuery);
 
       const mockQuery = createMockQuery(mockMission);
       (MMission.findById as jest.Mock).mockReturnValue(mockQuery);
 
       const result = await missionService.getMissionById(missionId);
+
+      // Check that updateExpiredMissions was called
+      expect(MMission.updateMany).toHaveBeenCalled();
+      expect(mockUpdateQuery.exec).toHaveBeenCalled();
 
       expect(MMission.findById).toHaveBeenCalledWith(missionId);
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
@@ -64,16 +92,26 @@ describe('MissionService', () => {
   });
 
   describe('getMissionsByStudentId', () => {
-    it('should retrieve missions for a specific student', async () => {
+    it('should retrieve missions for a specific student and update expired missions', async () => {
       const studentId = new Types.ObjectId().toHexString();
       const mockMissions = [
         { _id: new Types.ObjectId(), student: studentId, documentName: 'Student Mission' }
       ];
 
+      // Mock updateMany for updateExpiredMissions
+      const mockUpdateQuery = {
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 0 })
+      };
+      (MMission.updateMany as jest.Mock).mockReturnValue(mockUpdateQuery);
+
       const mockQuery = createMockQuery(mockMissions);
       (MMission.find as jest.Mock).mockReturnValue(mockQuery);
 
       const result = await missionService.getMissionsByStudentId(studentId);
+
+      // Check that updateExpiredMissions was called
+      expect(MMission.updateMany).toHaveBeenCalled();
+      expect(mockUpdateQuery.exec).toHaveBeenCalled();
 
       expect(MMission.find).toHaveBeenCalledWith({ student: studentId });
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');
@@ -86,16 +124,26 @@ describe('MissionService', () => {
   });
 
   describe('getMissionsByBundleId', () => {
-    it('should retrieve missions for a specific bundle', async () => {
+    it('should retrieve missions for a specific bundle and update expired missions', async () => {
       const bundleId = new Types.ObjectId().toHexString();
       const mockMissions = [
         { _id: new Types.ObjectId(), bundleId: bundleId, documentName: 'Bundle Mission' }
       ];
 
+      // Mock updateMany for updateExpiredMissions
+      const mockUpdateQuery = {
+        exec: jest.fn().mockResolvedValue({ modifiedCount: 0 })
+      };
+      (MMission.updateMany as jest.Mock).mockReturnValue(mockUpdateQuery);
+
       const mockQuery = createMockQuery(mockMissions);
       (MMission.find as jest.Mock).mockReturnValue(mockQuery);
 
       const result = await missionService.getMissionsByBundleId(bundleId);
+
+      // Check that updateExpiredMissions was called
+      expect(MMission.updateMany).toHaveBeenCalled();
+      expect(mockUpdateQuery.exec).toHaveBeenCalled();
 
       expect(MMission.find).toHaveBeenCalledWith({ bundleId: bundleId });
       expect(mockQuery.populate).toHaveBeenCalledWith('student', 'displayName');

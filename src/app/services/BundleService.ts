@@ -2,6 +2,7 @@ import { EServiceLoadPriority } from "../models/enums/EServiceLoadPriority.enum"
 import { IService } from "../models/interfaces/IService.interface";
 import { Singleton } from "../models/classes/Singleton";
 import MBundle, { IBundle } from "../db/models/MBundle.model";
+import { IAddress } from "../models/interfaces/IAddress.interface";
 import { Types } from "mongoose";
 import { EBundleStatus } from "../models/enums/EBundleStatus.enum";
 
@@ -16,6 +17,11 @@ export class BundleService implements IService {
         return Promise.resolve();
     }
 
+    public async getIDs(): Promise<string[]> {
+        const bundleIds = await MBundle.distinct("_id");
+        return bundleIds.map(id => id.toHexString());
+    }
+
     /**
      * Retrieves all bundles from the database.
      * @returns A promise that resolves to an array of all bundles.
@@ -25,7 +31,32 @@ export class BundleService implements IService {
         return MBundle.find()
             .populate('student', 'displayName')
             .populate('subjects.tutor', 'displayName')
-            .populate('createdBy', 'displayName') // This populates the creator field
+            .populate('createdBy', 'displayName')
+            .populate('manager', 'displayName')
+            .populate('stakeholders', 'displayName')
+            .exec();
+    }
+
+    /**
+     * Retrieves bundles where the user is involved as a tutor, manager, or stakeholder.
+     * @param userId The ID of the user.
+     * @returns A promise that resolves to an array of bundles.
+     */
+    public async getBundlesByUser(userId: string): Promise<IBundle[]> {
+        const userObjectId = new Types.ObjectId(userId);
+
+        return MBundle.find({
+            $or: [
+                { 'subjects.tutor': userObjectId },
+                { 'manager': userObjectId },
+                { 'stakeholders': userObjectId }
+            ]
+        })
+            .populate('student', 'displayName')
+            .populate('subjects.tutor', 'displayName')
+            .populate('createdBy', 'displayName')
+            .populate('manager', 'displayName')
+            .populate('stakeholders', 'displayName')
             .exec();
     }
     /**
@@ -38,6 +69,8 @@ export class BundleService implements IService {
             .populate('student', 'displayName')
             .populate('subjects.tutor', 'displayName')
             .populate('createdBy', 'displayName')
+            .populate('manager', 'displayName')
+            .populate('stakeholders', 'displayName')
             .exec();
     }
 
@@ -60,9 +93,29 @@ export class BundleService implements IService {
      * @param studentId The user ID for the student in the bundle.
      * @param subjects An array of objects, each defining a subject, its tutor, and duration.
      * @param creatorId The user ID of the person creating this bundle.
+     * @param lessonLocation Optional structured address where lessons will take place.
+     * @param managerId Optional ID of the staff member managing this bundle.
+     * @param stakeholderIds Optional array of user IDs who are stakeholders in this bundle.
      * @returns The newly created bundle.
      */
-    public async createBundle(studentId: string, subjects: { subject: string, grade: string, tutor: string, durationMinutes: number }[], creatorId: string): Promise<IBundle> {
+    public async createBundle(
+        studentId: string,
+        subjects: { subject: string, grade: string, tutor: string, durationMinutes: number }[],
+        creatorId: string,
+        lessonLocation?: IAddress,
+        managerId?: string,
+        stakeholderIds?: string[]
+    ): Promise<IBundle> {
+        // Validate no duplicate tutor-subject combinations
+        const tutorSubjectPairs = new Set<string>();
+        for (const subject of subjects) {
+            const key = `${subject.tutor}-${subject.subject}`;
+            if (tutorSubjectPairs.has(key)) {
+                throw new Error(`Duplicate tutor-subject combination found: tutor ${subject.tutor} is already assigned to subject ${subject.subject} in this bundle.`);
+            }
+            tutorSubjectPairs.add(key);
+        }
+
         const studentObjectId = new Types.ObjectId(studentId);
         const creatorObjectId = new Types.ObjectId(creatorId);
 
@@ -72,11 +125,22 @@ export class BundleService implements IService {
             tutor: new Types.ObjectId(subject.tutor)
         }));
 
-        const newBundle = new MBundle({
+        const bundleData: any = {
             student: studentObjectId,
-            subjects: formattedSubjects, // Use the formatted array
-            createdBy: creatorObjectId
-        });
+            subjects: formattedSubjects,
+            createdBy: creatorObjectId,
+            stakeholders: stakeholderIds ? stakeholderIds.map(id => new Types.ObjectId(id)) : []
+        };
+
+        if (lessonLocation) {
+            bundleData.lessonLocation = lessonLocation;
+        }
+
+        if (managerId) {
+            bundleData.manager = new Types.ObjectId(managerId);
+        }
+
+        const newBundle = new MBundle(bundleData);
 
         await newBundle.save();
         return newBundle;
@@ -89,6 +153,22 @@ export class BundleService implements IService {
      * @returns The updated bundle.
      */
     public async addSubjectToBundle(bundleId: string, subject: { subject: string, grade: string, tutor: string, durationMinutes: number }): Promise<IBundle | null> {
+        // First, get the bundle to check for duplicates
+        const bundle = await MBundle.findById(bundleId);
+        if (!bundle) {
+            return null;
+        }
+
+        // Check if this tutor-subject combination already exists
+        const isDuplicate = bundle.subjects.some(existingSubject =>
+            existingSubject.tutor.toString() === subject.tutor &&
+            existingSubject.subject === subject.subject
+        );
+
+        if (isDuplicate) {
+            throw new Error(`Duplicate tutor-subject combination: tutor ${subject.tutor} is already assigned to subject ${subject.subject} in this bundle.`);
+        }
+
         const subjectWithObjectId = {
             ...subject,
             tutor: new Types.ObjectId(subject.tutor)
