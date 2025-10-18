@@ -36,6 +36,11 @@ export class UserService implements IService {
         return Promise.resolve();
     }
 
+    public async getIDs(): Promise<string[]> {
+        const userIds = await MUser.distinct("_id");
+        return userIds.map(id => id.toHexString());
+    }
+
     /**
      * Finds a user by their Google ID, updating their profile if they exist,
      * or creating a new user if they don't.

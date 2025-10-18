@@ -2,6 +2,7 @@ import { Types } from 'mongoose'; // Changed from 'Schema' to 'Types'
 import { EPayslipStatus } from '../enums/EPayslipStatus.enum';
 
 export interface IPayslip {
+    _id: Types.ObjectId;
     userId: Types.ObjectId; // Changed from Schema.Types.ObjectId
     payPeriod: string; // e.g., "2025-09"
     status: EPayslipStatus;
