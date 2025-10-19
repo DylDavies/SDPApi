@@ -13,9 +13,10 @@ if (!BASE_URL) {
     throw new Error("EXTERNAL_API_BASE_URL is not set in environment variables.");
 }
 
-router.get("/studygroups/upcoming", async (req, res) => {
+
+router.get("/studygroups", async (req, res) => {
     try {
-        const response = await fetch(BASE_URL + "/studygroups/scheduled/upcoming");
+        const response = await fetch(BASE_URL + "/studygroups");
 
         if (!response.ok) {
             const errorData = await response.text();
