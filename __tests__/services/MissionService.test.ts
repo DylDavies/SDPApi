@@ -1,10 +1,13 @@
 import { MissionService } from '../../src/app/services/MissionsService';
 import MMission from '../../src/app/db/models/MMissions.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import { Types } from 'mongoose';
 import { EMissionStatus } from '../../src/app/models/enums/EMissions.enum';
 
 // Mock the entire module
 jest.mock('../../src/app/db/models/MMissions.model');
+jest.mock('../../src/app/db/models/MUser.model');
+jest.mock('../../src/app/services/NotificationService');
 
 // Create a mock query object that supports method chaining
 const createMockQuery = (mockData: any) => {
@@ -20,6 +23,13 @@ describe('MissionService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     missionService = new MissionService();
+
+    // Mock MUser.findById
+    (MUser.findById as jest.Mock).mockResolvedValue({
+      _id: new Types.ObjectId(),
+      displayName: 'Test User',
+      email: 'test@example.com'
+    });
   });
 
   describe('getMission', () => {

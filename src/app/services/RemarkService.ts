@@ -9,6 +9,9 @@ import PayslipService from "./PayslipService";
 import UserService from "./UserService";
 import IBadge from "../models/interfaces/IBadge.interface";
 import { Types } from "mongoose";
+import notificationService from "./NotificationService";
+import MBundle from "../db/models/MBundle.model";
+import { generateEmailTemplate, formatDateTime, createDetailsTable } from "../utils/emailTemplates";
 
 export class RemarkService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -122,6 +125,44 @@ export class RemarkService implements IService {
                 userId: existingEvent!.tutor,
                 description: `${existingEvent!.subject} lesson for ${(existingEvent!.student as unknown as {displayName: string}).displayName}`
             });
+        }
+
+        // Notify stakeholders about completed event with remark
+        const bundle = await MBundle.findById(existingEvent!.bundle);
+        if (bundle && bundle.stakeholders && bundle.stakeholders.length > 0) {
+            // Format remark entries for email
+            const remarkDetails = entries.map(entry => `<strong>${entry.field}:</strong> ${entry.value}`).join('<br>');
+
+            const content = `
+                <p>An event has been completed and remarked.</p>
+                ${createDetailsTable({
+                    'Subject': existingEvent!.subject,
+                    'Student': (existingEvent!.student as unknown as {displayName: string}).displayName,
+                    'Date': formatDateTime(existingEvent!.startTime),
+                    'Duration': `${existingEvent!.duration} minutes`
+                })}
+                <div class="highlight">
+                    <p><strong>Remark Details:</strong></p>
+                    <p>${remarkDetails}</p>
+                </div>
+            `;
+
+            const html = generateEmailTemplate(
+                'Event Completed',
+                content,
+                { text: 'View Events', url: `${process.env.FRONTEND_URL}/dashboard` }
+            );
+
+            // Notify all stakeholders
+            for (const stakeholderId of bundle.stakeholders) {
+                await notificationService.createNotification(
+                    stakeholderId.toString(),
+                    "Event Completed",
+                    `A ${existingEvent!.subject} lesson for ${(existingEvent!.student as unknown as {displayName: string}).displayName} has been completed and remarked.`,
+                    true,
+                    html
+                );
+            }
         }
 
         return newRemark;

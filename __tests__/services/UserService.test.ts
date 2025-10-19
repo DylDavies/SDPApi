@@ -1,5 +1,6 @@
 import { UserService } from '../../src/app/services/UserService';
 import MUser from '../../src/app/db/models/MUser.model';
+import MBadge from '../../src/app/db/models/MBadge.model';
 import roleService, {RoleService} from '../../src/app/services/RoleService';
 import notificationService from '../../src/app/services/NotificationService';
 import { Types } from 'mongoose';
@@ -8,6 +9,7 @@ import { EUserType } from '../../src/app/models/enums/EUserType.enum';
 
 // Mock all external dependencies
 jest.mock('../../src/app/db/models/MUser.model');
+jest.mock('../../src/app/db/models/MBadge.model');
 jest.mock('../../src/app/services/RoleService');
 jest.mock('../../src/app/services/NotificationService');
 jest.mock('../../src/app/services/LoggingService');
@@ -234,7 +236,15 @@ describe('UserService', () => {
         it('should add a badge to a user', async () => {
             const badgeId = new Types.ObjectId().toHexString();
             (MUser.findByIdAndUpdate as jest.Mock).mockReturnValue({
-                populate: jest.fn().mockResolvedValue({ _id: 'user123' })
+                populate: jest.fn().mockResolvedValue({ _id: 'user123', displayName: 'Test User' })
+            });
+            (MBadge.findById as jest.Mock).mockResolvedValue({
+                _id: badgeId,
+                name: 'Test Badge',
+                TLA: 'TB',
+                summary: 'Test badge summary',
+                description: 'Test description',
+                bonus: 100
             });
 
             await userService.addBadgeToUser('user123', badgeId);

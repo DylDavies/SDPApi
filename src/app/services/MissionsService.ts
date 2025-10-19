@@ -5,6 +5,9 @@ import MMission, { IMissions } from "../db/models/MMissions.model";
 import { Types } from "mongoose";
 import { EMissionStatus } from "../models/enums/EMissions.enum";
 import PayslipService from "./PayslipService";
+import notificationService from "./NotificationService";
+import MUser from "../db/models/MUser.model";
+import { generateEmailTemplate, formatDate } from "../utils/emailTemplates";
 
 export class MissionService implements IService {
     public static loadPriority: EServiceLoadPriority = EServiceLoadPriority.Low;
@@ -74,10 +77,41 @@ export class MissionService implements IService {
         });
 
         await newMission.save();
+
+        // Notify tutor about new mission
+        const tutor = await MUser.findById(tutorId);
+        if (tutor) {
+            const content = `
+                <p>Hi ${tutor.displayName},</p>
+                <p>You've been assigned a new mission!</p>
+                <div class="highlight">
+                    <p><strong>Remuneration:</strong> R${remuneration} per hour</p>
+                    <p><strong>Target Completion Date:</strong> ${formatDate(dateCompleted)}</p>
+                </div>
+                <p>Complete this mission to earn bonus payments.</p>
+            `;
+
+            const html = generateEmailTemplate(
+                'New Mission Assigned',
+                content,
+                { text: 'View Missions', url: `${process.env.FRONTEND_URL}/dashboard` }
+            );
+
+            await notificationService.createNotification(
+                tutorId,
+                "New Mission Assigned",
+                `You've been assigned a new mission with R${remuneration}/hour remuneration.`,
+                true,
+                html
+            );
+        }
+
         return newMission;
     }
 
     public async updateMission(missionId: string, updateData: Partial<IMissions>): Promise<IMissions | null> {
+        const originalMission = await MMission.findById(missionId);
+
         if (updateData.status && updateData.status == EMissionStatus.Achieved) {
             const mission = await MMission.findById(missionId).populate('student', 'displayName');
 
@@ -93,6 +127,41 @@ export class MissionService implements IService {
             const amount = mission.hoursCompleted * mission.remuneration;
 
             await PayslipService.addBonus(payslip.id, `Achieved Mission for ${(mission.student as unknown as {displayName: string}).displayName}`, amount);
+
+            // Notify tutor of mission achievement
+            const tutor = await MUser.findById(mission.tutor);
+            if (tutor) {
+                const content = `
+                    <p>Hi ${tutor.displayName},</p>
+                    <p>Congratulations! Your mission has been marked as achieved!</p>
+                    <div class="highlight">
+                        <p><strong>Bonus Amount:</strong> R${amount}</p>
+                        <p><strong>Pay Period:</strong> ${payPeriod}</p>
+                    </div>
+                    <p>The bonus has been added to your payslip.</p>
+                `;
+
+                const html = generateEmailTemplate(
+                    'Mission Achieved!',
+                    content,
+                    { text: 'View Payslip', url: `${process.env.FRONTEND_URL}/dashboard/payslips` }
+                );
+
+                await notificationService.createNotification(
+                    mission.tutor.toString(),
+                    "Mission Achieved",
+                    `Congratulations! You've achieved your mission. Bonus of R${amount} added to your payslip.`,
+                    true,
+                    html
+                );
+            }
+        } else if (originalMission) {
+            // Notify tutor of mission updates (non-achieved status changes)
+            await notificationService.createNotification(
+                originalMission.tutor.toString(),
+                "Mission Updated",
+                "Your mission has been updated. Please check the details."
+            );
         }
 
         return MMission.findByIdAndUpdate(
@@ -148,6 +217,14 @@ export class MissionService implements IService {
      */
     private async updateExpiredMissions(): Promise<void> {
         const now = new Date();
+
+        // Find missions that will be marked as expired
+        const expiredMissions = await MMission.find({
+            dateCompleted: { $lt: now },
+            status: EMissionStatus.Active
+        }).exec();
+
+        // Update them
         await MMission.updateMany(
             {
                 dateCompleted: { $lt: now },
@@ -157,6 +234,27 @@ export class MissionService implements IService {
                 $set: { status: EMissionStatus.Completed }
             }
         ).exec();
+
+        // Notify tutors and commissioners about expired missions
+        for (const mission of expiredMissions) {
+            // Notify tutor
+            if (mission.tutor) {
+                await notificationService.createNotification(
+                    typeof mission.tutor === 'object' ? mission.tutor.toString() : mission.tutor,
+                    "Mission Expired",
+                    "One of your missions has reached its completion date without being achieved."
+                );
+            }
+
+            // Notify commissioner
+            if (mission.commissionedBy) {
+                await notificationService.createNotification(
+                    typeof mission.commissionedBy === 'object' ? mission.commissionedBy.toString() : mission.commissionedBy,
+                    "Mission Expired",
+                    "A mission you commissioned has expired without being achieved."
+                );
+            }
+        }
     }
 }
 
