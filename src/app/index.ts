@@ -15,6 +15,7 @@ import { ServiceManager } from "./services/ServiceManager";
 import { Singleton } from "./models/classes/Singleton";
 import SocketService from "./services/SocketService";
 import { startBadgeCleanupJob } from "./jobs/badgeCleanup";
+import { startEventReminderJob } from "./jobs/eventReminder";
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -37,6 +38,7 @@ async function main() {
 
     // --- Start Scheduled Jobs ---
     startBadgeCleanupJob();
+    startEventReminderJob();
 
     // --- Route Loading (can remain the same) ---
     logger.info("Loading routes...");

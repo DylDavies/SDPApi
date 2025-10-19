@@ -47,6 +47,15 @@ export class RoleService implements IService {
     }
 
     /**
+     * Retrieves a single role by its ID.
+     * @param roleId The ID of the role to retrieve.
+     * @returns The role document or null if not found.
+     */
+    public async getRoleById(roleId: string): Promise<IRole | null> {
+        return MRole.findById(roleId);
+    }
+
+    /**
      * Updates an existing role.
      * @param name The name for the new role.
      * @param permissions The permissions to assign to the new role.

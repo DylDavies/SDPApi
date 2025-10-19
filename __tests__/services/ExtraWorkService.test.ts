@@ -1,10 +1,13 @@
 import { ExtraWorkService } from '../../src/app/services/ExtraWorkService';
 import MExtraWork, { EExtraWorkStatus } from '../../src/app/db/models/MExtraWork.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import { Types } from 'mongoose';
 import { mocked } from 'jest-mock';
 
 // Mock the Mongoose model for ExtraWork to isolate the service logic
 jest.mock('../../src/app/db/models/MExtraWork.model');
+jest.mock('../../src/app/db/models/MUser.model');
+jest.mock('../../src/app/services/NotificationService');
 
 const MExtraWorkMock = mocked(MExtraWork);
 
@@ -14,11 +17,18 @@ describe('ExtraWorkService', () => {
     beforeEach(() => {
         // Clear all mock implementations and calls before each test
         MExtraWorkMock.mockClear();
-        
+
         // Mock the constructor and save method for new instances
         MExtraWorkMock.mockImplementation(() => ({
             save: jest.fn().mockResolvedValue(true),
         }) as any);
+
+        // Mock MUser.findById
+        (MUser.findById as jest.Mock).mockResolvedValue({
+            _id: new Types.ObjectId(),
+            displayName: 'Test User',
+            email: 'test@example.com'
+        });
 
         extraWorkService = new ExtraWorkService();
     });
