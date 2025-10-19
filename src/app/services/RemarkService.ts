@@ -115,7 +115,7 @@ export class RemarkService implements IService {
             // Add badge rates
             const badges = user!.badges;
 
-            if (badges) rate += badges.map(b => (b.badge as unknown as IBadge).bonus).reduce((prev, curr) => prev + curr);
+            if (badges && badges.length > 0) rate += badges.map(b => (b.badge as unknown as IBadge).bonus).reduce((prev, curr) => prev + curr);
 
             await PayslipService.addCompletedEvent({
                 baseRate: 50,
