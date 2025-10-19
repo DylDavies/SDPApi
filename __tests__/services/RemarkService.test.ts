@@ -2,12 +2,17 @@ import { RemarkService } from '../../src/app/services/RemarkService';
 import MRemark from '../../src/app/db/models/MRemark.model';
 import MRemarkTemplate from '../../src/app/db/models/MRemarkTemplate.model';
 import MEvent from '../../src/app/db/models/MEvent.model';
+import MBundle from '../../src/app/db/models/MBundle.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import { mocked } from 'jest-mock';
 import { Types } from 'mongoose';
 
 jest.mock('../../src/app/db/models/MRemark.model');
 jest.mock('../../src/app/db/models/MRemarkTemplate.model');
 jest.mock('../../src/app/db/models/MEvent.model');
+jest.mock('../../src/app/db/models/MBundle.model');
+jest.mock('../../src/app/db/models/MUser.model');
+jest.mock('../../src/app/services/NotificationService');
 
 const MRemarkMock = MRemark as jest.Mocked<typeof MRemark>;
 const MRemarkTemplateMock = mocked(MRemarkTemplate);
@@ -19,6 +24,21 @@ describe('RemarkService', () => {
     beforeEach(() => {
         jest.clearAllMocks();
         remarkService = new RemarkService();
+
+        // Mock MBundle.findById to return a mock bundle with populated fields
+        (MBundle.findById as jest.Mock).mockReturnValue({
+            populate: jest.fn().mockResolvedValue({
+                _id: new Types.ObjectId(),
+                tutor: new Types.ObjectId(),
+                manager: new Types.ObjectId(),
+                stakeholders: []
+            })
+        });
+
+        // Mock MUser.find
+        (MUser.find as jest.Mock).mockReturnValue({
+            select: jest.fn().mockResolvedValue([])
+        });
     });
 
     describe('getActiveTemplate', () => {

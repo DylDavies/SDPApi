@@ -5,6 +5,9 @@ import MBundle, { IBundle } from "../db/models/MBundle.model";
 import { IAddress } from "../models/interfaces/IAddress.interface";
 import { Types } from "mongoose";
 import { EBundleStatus } from "../models/enums/EBundleStatus.enum";
+import notificationService from "./NotificationService";
+import MUser from "../db/models/MUser.model";
+import { generateEmailTemplate } from "../utils/emailTemplates";
 
 /**
  * A service for managing bundles, which are packages for a student,
@@ -81,11 +84,61 @@ export class BundleService implements IService {
      * @returns The updated bundle.
      */
     public async updateBundle(bundleId: string, updateData: Partial<IBundle>): Promise<IBundle | null> {
-        return MBundle.findByIdAndUpdate(
+        // Get the current bundle state before updating
+        const currentBundle = await MBundle.findById(bundleId);
+        if (!currentBundle) {
+            return null;
+        }
+
+        const updatedBundle = await MBundle.findByIdAndUpdate(
             bundleId,
             { $set: updateData },
             { new: true }
         );
+
+        if (updatedBundle) {
+            // Notify on status change
+            if (updateData.status && updateData.status !== currentBundle.status) {
+                // Notify all tutors
+                for (const subject of updatedBundle.subjects) {
+                    await notificationService.createNotification(
+                        subject.tutor.toString(),
+                        "Bundle Status Changed",
+                        `A bundle status has been updated to: ${updateData.status}.`
+                    );
+                }
+
+                // Notify manager
+                if (updatedBundle.manager) {
+                    await notificationService.createNotification(
+                        updatedBundle.manager.toString(),
+                        "Bundle Status Changed",
+                        `Your managed bundle status has been updated to: ${updateData.status}.`
+                    );
+                }
+            }
+
+            // Notify on manager change
+            if (updateData.manager && updateData.manager.toString() !== currentBundle.manager?.toString()) {
+                // Notify old manager
+                if (currentBundle.manager) {
+                    await notificationService.createNotification(
+                        currentBundle.manager.toString(),
+                        "Bundle Management Removed",
+                        `You are no longer managing a bundle.`
+                    );
+                }
+
+                // Notify new manager
+                await notificationService.createNotification(
+                    updateData.manager.toString(),
+                    "Bundle Management Assigned",
+                    `You've been assigned as the manager for a bundle.`
+                );
+            }
+        }
+
+        return updatedBundle;
     }
 
     /**
@@ -143,6 +196,52 @@ export class BundleService implements IService {
         const newBundle = new MBundle(bundleData);
 
         await newBundle.save();
+
+        // Notify all tutors assigned to the bundle
+        const uniqueTutorIds = new Set(subjects.map(s => s.tutor));
+        for (const tutorId of uniqueTutorIds) {
+            const tutor = await MUser.findById(tutorId);
+            if (tutor) {
+                const tutorSubjects = subjects.filter(s => s.tutor === tutorId);
+                const subjectList = tutorSubjects.map(s => `${s.subject} (${s.grade})`).join(', ');
+
+                const content = `
+                    <p>Hi ${tutor.displayName},</p>
+                    <p>You have been assigned as a tutor for a new bundle.</p>
+                    <div class="highlight">
+                        <p><strong>Subjects:</strong> ${subjectList}</p>
+                    </div>
+                    <p>You can view the full bundle details in your dashboard.</p>
+                `;
+
+                const html = generateEmailTemplate(
+                    'New Bundle Assignment',
+                    content,
+                    { text: 'View Bundles', url: `${process.env.FRONTEND_URL}/dashboard/bundles` }
+                );
+
+                await notificationService.createNotification(
+                    tutorId,
+                    "Assigned to New Bundle",
+                    `You've been assigned to tutor ${subjectList} in a new bundle.`,
+                    true,
+                    html
+                );
+            }
+        }
+
+        // Notify manager if assigned
+        if (managerId) {
+            const manager = await MUser.findById(managerId);
+            if (manager) {
+                await notificationService.createNotification(
+                    managerId,
+                    "Bundle Management Assigned",
+                    `You've been assigned as the manager for a new bundle.`
+                );
+            }
+        }
+
         return newBundle;
     }
 
@@ -173,11 +272,34 @@ export class BundleService implements IService {
             ...subject,
             tutor: new Types.ObjectId(subject.tutor)
         };
-        return MBundle.findByIdAndUpdate(
+        const updatedBundle = await MBundle.findByIdAndUpdate(
             bundleId,
             { $push: { subjects: subjectWithObjectId } },
             { new: true }
         );
+
+        if (updatedBundle) {
+            // Notify the tutor
+            const tutor = await MUser.findById(subject.tutor);
+            if (tutor) {
+                await notificationService.createNotification(
+                    subject.tutor,
+                    "New Subject Assignment",
+                    `You've been assigned to tutor ${subject.subject} (${subject.grade}) in an existing bundle.`
+                );
+            }
+
+            // Notify manager if exists
+            if (updatedBundle.manager) {
+                await notificationService.createNotification(
+                    updatedBundle.manager.toString(),
+                    "Bundle Updated",
+                    `A new subject (${subject.subject}) has been added to your managed bundle.`
+                );
+            }
+        }
+
+        return updatedBundle;
     }
 
     /**
@@ -192,13 +314,38 @@ export class BundleService implements IService {
             return null;
         }
 
-        const subjectExists = bundle.subjects.some(s => s._id?.toString() === subjectId);
-        if (!subjectExists) {
+        const subjectToRemove = bundle.subjects.find(s => s._id?.toString() === subjectId);
+        if (!subjectToRemove) {
             throw new Error(`Subject with id "${subjectId}" not found in this bundle.`);
         }
 
+        // Store tutor info before removing
+        const tutorId = subjectToRemove.tutor.toString();
+        const subjectName = subjectToRemove.subject;
+        const grade = subjectToRemove.grade;
+
         bundle.subjects = bundle.subjects.filter(s => s._id?.toString() !== subjectId);
         await bundle.save();
+
+        // Notify the tutor who was removed
+        const tutor = await MUser.findById(tutorId);
+        if (tutor) {
+            await notificationService.createNotification(
+                tutorId,
+                "Removed from Bundle Subject",
+                `You've been removed from tutoring ${subjectName} (${grade}) in a bundle.`
+            );
+        }
+
+        // Notify manager if exists
+        if (bundle.manager) {
+            await notificationService.createNotification(
+                bundle.manager.toString(),
+                "Bundle Updated",
+                `A subject (${subjectName}) has been removed from your managed bundle.`
+            );
+        }
+
         return bundle;
     }
 

@@ -1,12 +1,15 @@
 import { PayslipService } from '../../src/app/services/PayslipService';
 import { MPayslip } from '../../src/app/db/models/MPayslip.model';
 import { MPreapprovedItems } from '../../src/app/db/models/MPreapprovedItems.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import { EPayslipStatus } from '../../src/app/models/enums/EPayslipStatus.enum';
 import { Types } from 'mongoose';
 
 // Mock MongoDB models
 jest.mock('../../src/app/db/models/MPayslip.model');
 jest.mock('../../src/app/db/models/MPreapprovedItems.model');
+jest.mock('../../src/app/db/models/MUser.model');
+jest.mock('../../src/app/services/NotificationService');
 jest.mock('../../src/app/services/ConfigService', () => ({
     tax: {
         uifRate: 0.01,
@@ -54,6 +57,13 @@ describe('PayslipService', () => {
             notes: [],
             save: jest.fn().mockResolvedValue(undefined),
         };
+
+        // Mock MUser.findById
+        (MUser.findById as jest.Mock).mockResolvedValue({
+            _id: mockUserId,
+            displayName: 'Test User',
+            email: 'test@example.com'
+        });
 
         jest.clearAllMocks();
     });

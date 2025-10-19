@@ -1,5 +1,6 @@
 import { BundleService } from '../../src/app/services/BundleService';
 import MBundle from '../../src/app/db/models/MBundle.model';
+import MUser from '../../src/app/db/models/MUser.model';
 import { Types } from 'mongoose';
 import { EBundleStatus } from '../../src/app/models/enums/EBundleStatus.enum';
 import { EServiceLoadPriority } from '../../src/app/models/enums/EServiceLoadPriority.enum';
@@ -7,6 +8,8 @@ import { mocked } from 'jest-mock';
 
 
 jest.mock('../../src/app/db/models/MBundle.model');
+jest.mock('../../src/app/db/models/MUser.model');
+jest.mock('../../src/app/services/NotificationService');
 
 const MBundleMock = mocked(MBundle);
 
@@ -19,6 +22,13 @@ describe('BundleService', () => {
         MBundleMock.mockImplementation(() => ({
             save: jest.fn().mockResolvedValue(true),
         }) as any);
+
+        // Mock MUser.findById
+        (MUser.findById as jest.Mock).mockResolvedValue({
+            _id: new Types.ObjectId(),
+            displayName: 'Test User',
+            email: 'test@example.com'
+        });
 
         bundleService = new BundleService();
     });

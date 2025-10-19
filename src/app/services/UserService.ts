@@ -14,16 +14,10 @@ import { Theme } from "../models/types/theme.type";
 import { IRole } from "../db/models/MRole.model";
 import { EPermission } from "../models/enums/EPermission.enum";
 import IBadge from "../models/interfaces/IBadge.interface";
+import MBadge from "../db/models/MBadge.model";
 import notificationService from "./NotificationService";
 import { IAddress } from "../models/interfaces/IAddress.interface";
-
-const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-};
+import { generateEmailTemplate, formatDate, createDetailsTable } from "../utils/emailTemplates";
 
 /**
  * A service for managing user data, including their assigned roles.
@@ -89,15 +83,26 @@ export class UserService implements IService {
             reason,
             startDate,
             endDate,
-            approved: ELeave.Pending 
+            approved: ELeave.Pending
         };
 
         // Find the user and push the new leave request into their 'leave' array.
-        return MUser.findByIdAndUpdate(
+        const updatedUser = await MUser.findByIdAndUpdate(
             userId,
             { $push: { leave: newLeaveRequest } },
             { new: true, runValidators: true } // 'new: true' returns the modified document
         );
+
+        if (updatedUser) {
+            // Notify user that leave request has been submitted
+            await notificationService.createNotification(
+                userId,
+                "Leave Request Submitted",
+                `Your leave request for "${reason}" from ${formatDate(startDate)} to ${formatDate(endDate)} has been submitted and is pending approval.`
+            );
+        }
+
+        return updatedUser;
     }
 
     /**
@@ -129,77 +134,24 @@ export class UserService implements IService {
         const status = approved === ELeave.Approved ? 'Approved' : 'Denied';
         const statusColor = approved === ELeave.Approved ? '#4CAF50' : '#F44336'; // Green for approved, Red for denied
 
-        const html = `
-        <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <meta name="color-scheme" content="light dark">
-                <meta name="supported-color-schemes" content="light dark">
-                <style>
-                    body { font-family: Roboto, "Helvetica Neue", sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-                    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-                    .header { background-color: #2855b6; padding: 20px; text-align: center; }
-                    .header img { width: 80px; }
-                    .content { padding: 30px; line-height: 1.6; color: #333; }
-                    .content h1 { font-size: 24px; color: #333; margin-top: 0; }
-                    .status-box { padding: 12px; text-align: center; border-radius: 4px; margin: 20px 0; font-size: 18px; font-weight: bold; color: #fff; }
-                    .details-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                    .details-table td { padding: 8px; border-bottom: 1px solid #eaeaea; }
-                    .details-table td:first-child { font-weight: bold; width: 120px; }
-                    .footer { text-align: center; padding: 20px; font-size: 12px; color: #777; background-color: #f9f9f9; }
-                    .button { display: inline-block; padding: 12px 24px; margin-top: 20px; background-color: #2855b6; color: #ffffff !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
-
-                    @media (prefers-color-scheme: dark) {
-                        .container { background-color: #222222; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-                        .content { color: #eeeeee; }
-                        .content h1 { color: #eeeeee; }
-                        .details-table td { border-bottom-color: #444444; }
-                        .footer { background-color: #1a1a1a; color: #aaaaaa; }
-
-                        .button {
-                            background-color: #5c85d6 !important; /* A lighter, more visible blue */
-                            color: #ffffff !important;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <img src="https://tutorcore.works/assets/logo_circle.png" alt="Company Logo">
-                    </div>
-                    <div class="content">
-                        <h1>Leave Request Update</h1>
-                        <p>Hi ${user.displayName},</p>
-                        <p>There has been an update to your recent leave request. The status is now:</p>
-                        <div class="status-box" style="background-color: ${statusColor};">
-                            ${status}
-                        </div>
-                        <table class="details-table">
-                            <tr>
-                                <td>Reason:</td>
-                                <td>${leaveRequest.reason}</td>
-                            </tr>
-                            <tr>
-                                <td>From:</td>
-                                <td>${formatDate(leaveRequest.startDate)}</td>
-                            </tr>
-                            <tr>
-                                <td>To:</td>
-                                <td>${formatDate(leaveRequest.endDate)}</td>
-                            </tr>
-                        </table>
-                        <a href="${process.env.FRONTEND_URL}/dashboard/profile" class="button">View My Profile</a>
-                    </div>
-                    <div class="footer">
-                        <p>&copy; ${new Date().getFullYear()} TutorCore. All rights reserved.</p>
-                    </div>
-                </div>
-            </body>
-            </html>
+        const content = `
+            <p>Hi ${user.displayName},</p>
+            <p>There has been an update to your recent leave request. The status is now:</p>
+            <div style="padding: 12px; text-align: center; border-radius: 4px; margin: 20px 0; font-size: 18px; font-weight: bold; color: #fff; background-color: ${statusColor};">
+                ${status}
+            </div>
+            ${createDetailsTable({
+                'Reason': leaveRequest.reason,
+                'From': formatDate(leaveRequest.startDate),
+                'To': formatDate(leaveRequest.endDate)
+            })}
         `;
+
+        const html = generateEmailTemplate(
+            'Leave Request Update',
+            content,
+            { text: 'View My Profile', url: `${process.env.FRONTEND_URL}/dashboard/profile` }
+        );
 
         await notificationService.createNotification(
             userId, 
@@ -316,14 +268,27 @@ export class UserService implements IService {
         if (!performingUser) throw new Error("Performing user not found.");
 
         const performingUserDescendants = await this.roleService.getDescendantRoleIds(performingUser.roles as Types.ObjectId[]);
-        
+
         if (!performingUserDescendants.has(roleId) && !isAdmin) {
             throw new Error("Forbidden: You can only assign roles that are below your own in the hierarchy.");
         }
 
         await MUser.updateOne({ _id: targetUserId }, { $addToSet: { roles: roleId } });
-        
-        return (await MUser.findById(targetUserId).populate('roles'))!;
+
+        const user = (await MUser.findById(targetUserId).populate('roles'))!;
+
+        if (user) {
+            const role = await this.roleService.getRoleById(roleId);
+            if (role) {
+                await notificationService.createNotification(
+                    targetUserId,
+                    "New Role Assigned",
+                    `You have been assigned the role "${role.name}". Your permissions have been updated.`
+                );
+            }
+        }
+
+        return user;
     }
 
     /**
@@ -354,7 +319,38 @@ export class UserService implements IService {
     public async approveUser(targetUserId: string): Promise<IUser> {
         await MUser.updateOne({ _id: targetUserId }, { $set: { pending: false } });
 
-        return (await MUser.findById(targetUserId).populate('roles'))!;
+        const user = (await MUser.findById(targetUserId).populate('roles'))!;
+
+        if (user) {
+            const content = `
+                <p>Hi ${user.displayName},</p>
+                <p>Great news! Your account has been approved and you now have full access to the TutorCore platform.</p>
+                <div class="highlight">
+                    <p><strong>You can now:</strong></p>
+                    <ul>
+                        <li>Access your dashboard</li>
+                        <li>View and manage your assignments</li>
+                        <li>Track your progress and earnings</li>
+                    </ul>
+                </div>
+            `;
+
+            const html = generateEmailTemplate(
+                'Account Approved',
+                content,
+                { text: 'Go to Dashboard', url: `${process.env.FRONTEND_URL}/dashboard` }
+            );
+
+            await notificationService.createNotification(
+                targetUserId,
+                "Account Approved",
+                "Your account has been approved! You now have full access to the TutorCore platform.",
+                true,
+                html
+            );
+        }
+
+        return user;
     }
 
     /**
@@ -364,7 +360,30 @@ export class UserService implements IService {
     public async disableUser(targetUserId: string): Promise<IUser> {
         await MUser.updateOne({ _id: targetUserId }, { $set: { disabled: true } });
 
-        return (await MUser.findById(targetUserId).populate('roles'))!;
+        const user = (await MUser.findById(targetUserId).populate('roles'))!;
+
+        if (user) {
+            const content = `
+                <p>Hi ${user.displayName},</p>
+                <p>Your account has been disabled and you no longer have access to the TutorCore platform.</p>
+                <p>If you believe this is an error, please contact your administrator for assistance.</p>
+            `;
+
+            const html = generateEmailTemplate(
+                'Account Disabled',
+                content
+            );
+
+            await notificationService.createNotification(
+                targetUserId,
+                "Account Disabled",
+                "Your account has been disabled. Please contact your administrator if you believe this is an error.",
+                true,
+                html
+            );
+        }
+
+        return user;
     }
 
     /**
@@ -506,11 +525,43 @@ export class UserService implements IService {
             dateAdded: new Date()
         };
 
-        return MUser.findByIdAndUpdate(
+        const user = await MUser.findByIdAndUpdate(
             userId,
             { $push: { badges: newUserBadge } },
             { new: true }
         ).populate([{ path: 'roles' }, { path: 'badges.badge' }]);
+
+        if (user) {
+            const badge = await MBadge.findById(badgeId);
+
+            if (badge) {
+                const content = `
+                    <p>Hi ${user.displayName},</p>
+                    <p>Congratulations! You've been awarded a new badge:</p>
+                    <div class="highlight">
+                        <h2 style="margin: 0;">${badge.name} (${badge.TLA})</h2>
+                        <p>${badge.summary}</p>
+                    </div>
+                    <p>${badge.description}</p>
+                `;
+
+                const html = generateEmailTemplate(
+                    `New Badge Awarded: ${badge.name}`,
+                    content,
+                    { text: 'View My Badges', url: `${process.env.FRONTEND_URL}/dashboard/profile` }
+                );
+
+                await notificationService.createNotification(
+                    userId,
+                    `Badge Awarded: ${badge.name}`,
+                    `Congratulations! You've earned the "${badge.name}" badge.`,
+                    true,
+                    html
+                );
+            }
+        }
+
+        return user;
     }
     
 
@@ -580,6 +631,34 @@ export class UserService implements IService {
             approvingManagerName: managerName,
             timestamp: new Date().toISOString()
         });
+
+        // Notify user of rate adjustment
+        const previousRate = user.rateAdjustments.length > 1 ? user.rateAdjustments[1].newRate : 0;
+        const content = `
+            <p>Hi ${user.displayName},</p>
+            <p>Your payment rate has been adjusted by ${managerName}.</p>
+            ${createDetailsTable({
+                'Previous Rate': previousRate > 0 ? `R${previousRate}/hour` : 'N/A',
+                'New Rate': `R${rateAdjustment.newRate}/hour`,
+                'Effective Date': formatDate(rateAdjustment.effectiveDate),
+                'Reason': rateAdjustment.reason
+            })}
+            <p>This change will be reflected in your upcoming payslips.</p>
+        `;
+
+        const html = generateEmailTemplate(
+            'Payment Rate Adjustment',
+            content,
+            { text: 'View Payslips', url: `${process.env.FRONTEND_URL}/dashboard/payslips` }
+        );
+
+        await notificationService.createNotification(
+            userId,
+            "Payment Rate Adjusted",
+            `Your payment rate has been adjusted to R${rateAdjustment.newRate}/hour, effective ${formatDate(rateAdjustment.effectiveDate)}.`,
+            true,
+            html
+        );
 
         return user;
     }

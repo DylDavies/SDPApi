@@ -9,6 +9,9 @@ import ConfigService from './ConfigService';
 import { IPayslip } from '../models/interfaces/IPayslip.interface';
 import { MPreapprovedItems } from '../db/models/MPreapprovedItems.model';
 import { IPreapprovedItem } from '../models/interfaces/IPreapprovedItem.interface';
+import notificationService from './NotificationService';
+import MUser from '../db/models/MUser.model';
+import { generateEmailTemplate, createDetailsTable } from '../utils/emailTemplates';
 
 // Helper interface for the tax calculation result
 interface ITaxCalculation {
@@ -133,7 +136,48 @@ export class PayslipService implements IService {
         });
 
         await payslip.save();
-        
+
+        // Notify user of payslip status change
+        const user = await MUser.findById(payslip.userId);
+        if (user) {
+            const message = `Your payslip for ${payslip.payPeriod} has been updated to: ${newStatus}`;
+
+            // Send email for APPROVED status (payslip finalized)
+            if (newStatus === EPayslipStatus.LOCKED) {
+                const content = `
+                    <p>Hi ${user.displayName},</p>
+                    <p>Your payslip for <strong>${payslip.payPeriod}</strong> has been locked and is now awaiting payment.</p>
+                    ${createDetailsTable({
+                        'Pay Period': payslip.payPeriod,
+                        'Gross Earnings': `R${payslip.grossEarnings.toFixed(2)}`,
+                        'Net Pay': `R${payslip.netPay.toFixed(2)}`,
+                        'Status': newStatus
+                    })}
+                `;
+
+                const html = generateEmailTemplate(
+                    'Payslip Locked',
+                    content,
+                    { text: 'View Payslip', url: `${process.env.FRONTEND_URL}/dashboard/payslips` }
+                );
+
+                await notificationService.createNotification(
+                    payslip.userId.toString(),
+                    "Payslip Locked",
+                    message,
+                    true,
+                    html
+                );
+            } else {
+                // For other status changes, send in-app only
+                await notificationService.createNotification(
+                    payslip.userId.toString(),
+                    "Payslip Status Updated",
+                    message
+                );
+            }
+        }
+
         return payslip;
     }
 
