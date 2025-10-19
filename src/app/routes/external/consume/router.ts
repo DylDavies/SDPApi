@@ -13,31 +13,6 @@ if (!BASE_URL) {
     throw new Error("EXTERNAL_API_BASE_URL is not set in environment variables.");
 }
 
-router.get("/studygroups/upcoming", async (req, res) => {
-    try {
-        const response = await fetch(BASE_URL + "/studygroups/scheduled/upcoming");
-
-        if (!response.ok) {
-            const errorData = await response.text();
-            logger.error(`External API error: ${response.status} - ${errorData}`);
-            return res.status(response.status).send({
-                message: "Error fetching data from external API.",
-                error: errorData 
-            });
-        }
-
-        const data = await response.json();
-
-        if (!data || !data.studygroups) {
-            return res.status(500).send({ message: "Invalid or empty data received from the external API." });
-        }
-
-        res.json(data.studygroups);
-    } catch (error) {
-        logger.error("Failed to fetch upcoming study groups:", error);
-        res.status(500).send({ message: "An unexpected error occurred." });
-    }
-});
 
 router.get("/studygroups", async (req, res) => {
     try {

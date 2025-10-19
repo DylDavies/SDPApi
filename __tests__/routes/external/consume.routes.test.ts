@@ -53,11 +53,11 @@ describe('External Consume Router', () => {
             json: async () => ({ studygroups: mockStudyGroups }),
         });
 
-        const response = await request(app).get('/consume/studygroups/upcoming');
+        const response = await request(app).get('/consume/studygroups');
 
         expect(response.status).toBe(200);
         expect(response.body).toEqual(mockStudyGroups);
-        expect(global.fetch).toHaveBeenCalledWith('http://fakeapi.com/studygroups/scheduled/upcoming');
+        expect(global.fetch).toHaveBeenCalledWith('http://fakeapi.com/studygroups');
     });
 
     it('should handle non-ok responses from the external API and return the error', async () => {
@@ -67,7 +67,7 @@ describe('External Consume Router', () => {
             text: async () => 'Not Found',
         });
 
-        const response = await request(app).get('/consume/studygroups/upcoming');
+        const response = await request(app).get('/consume/studygroups');
 
         expect(response.status).toBe(404);
         expect(response.body.message).toBe('Error fetching data from external API.');
@@ -81,7 +81,7 @@ describe('External Consume Router', () => {
             json: async () => ({ message: 'No study groups found' }), // Correctly structured but missing 'studygroups' key
         });
 
-        const response = await request(app).get('/consume/studygroups/upcoming');
+        const response = await request(app).get('/consume/studygroups');
 
         expect(response.status).toBe(500);
         expect(response.body.message).toBe('Invalid or empty data received from the external API.');
@@ -91,7 +91,7 @@ describe('External Consume Router', () => {
         const fetchError = new Error('Network error');
         (global.fetch as jest.Mock).mockRejectedValue(fetchError);
 
-        const response = await request(app).get('/consume/studygroups/upcoming');
+        const response = await request(app).get('/consume/studygroups');
 
         expect(response.status).toBe(500);
         expect(response.body.message).toBe('An unexpected error occurred.');
